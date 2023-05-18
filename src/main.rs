@@ -1,54 +1,11 @@
-pub type BB = u64;
+mod attack;
+mod bb;
+mod consts;
 
-pub trait BBUtil {
-    fn set(&mut self, ind: usize);
-    fn get(&self, ind: usize) -> bool;
-    fn pop(&mut self, ind: usize);
-    fn lsb(&self) -> usize;
-    fn print(&self);
-}
-
-macro_rules! SQ {
-    ($row: expr, $col: expr) => {
-        /* '8' is used here because chess game always is an 8x8 game */
-        ($row * 8) + $col
-    }
-}
-
-impl BBUtil for BB {
-    fn set(&mut self, ind: usize) {
-        *self |= 1 << ind;
-    }
-
-    fn get(&self, ind: usize) -> bool {
-        *self & (1 << ind) > 0
-    }
-
-    fn pop(&mut self, ind: usize) {
-        *self ^= 1 << ind;
-    }
-
-    fn lsb(&self) -> usize {
-        let num = *self ^ (*self - 1); 
-        let count = num.count_ones() as usize;
-        if count == 0 {
-            return 0;
-        }
-        count - 1
-    }
-
-    fn print(&self) {
-        for r in 0..8 {
-            print!(" {} |", 8 - r);
-            for f in 0..8 {
-                print!(" {}", if self.get(SQ!(r, f)) { '1' } else { '.' });
-            }
-            println!();
-        }
-        println!("     - - - - - - - -");
-        println!("     a b c d e f g h");
-    }
+fn init() {
+    attack::init();
 }
 
 fn main() {
+    init();
 }
