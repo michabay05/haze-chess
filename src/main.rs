@@ -1,11 +1,10 @@
 mod attack;
 mod bb;
 mod consts;
-
-fn init() {
-    attack::init();
-}
+mod engine;
+mod magic_consts;
+mod magics;
 
 fn main() {
-    init();
+    engine::test();
 }

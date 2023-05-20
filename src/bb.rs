@@ -24,7 +24,7 @@ impl BBUtil for BB {
     }
 
     fn lsb(&self) -> usize {
-        let num = *self ^ (*self - 1); 
+        let num = *self ^ (*self - 1);
         let count = num.count_ones() as usize;
         if count == 0 {
             return 0;
