@@ -1,15 +1,18 @@
 use crate::attack::{self, AttackInfo};
-use crate::bb::BBUtil;
-use crate::consts::{PieceColor, STR_COORDS};
+use crate::board::Board;
+use crate::consts::{PieceColor, Sq};
+use crate::fen::FEN_POSITIONS;
 
 pub struct Engine {
     pub attack: AttackInfo,
+    pub board: Board,
 }
 
 impl Engine {
     fn new() -> Self {
         let mut this = Self {
             attack: AttackInfo::new(),
+	    board: Board::from_fen(FEN_POSITIONS[2]),
         };
         this.init();
         this
@@ -21,14 +24,6 @@ impl Engine {
 }
 
 pub fn test() {
-    crate::magics::init();
-}
-
-fn a() {
-    let engine = Engine::new();
-    for i in 0..64 {
-        println!("{}\n---------------------", STR_COORDS[i]);
-        engine.attack.king[i].print();
-        println!();
-    }
+    let mut engine = Engine::new();
+    engine.board.display();
 }

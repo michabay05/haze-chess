@@ -2,8 +2,8 @@
 
 use crate::bb::{BBUtil, BB};
 use crate::consts::{Direction, PieceColor, Sq};
-use crate::SQ;
-use crate::{COL, ROW};
+use crate::magic_consts::{BISHOP_MAGICS, ROOK_MAGICS};
+use crate::{COL, ROW, SQ};
 
 // Total number of square a bishop can go to from a certain square
 #[rustfmt::skip]
@@ -35,6 +35,10 @@ pub struct AttackInfo {
     pub pawn: [[BB; 64]; 2],
     pub knight: [BB; 64],
     pub king: [BB; 64],
+    pub bishop_occ_mask: [BB; 64],
+    pub bishop_attack: [[BB; 512]; 64],
+    pub rook_occ_mask: [BB; 64],
+    pub rook_attack: [[BB; 4096]; 64],
 }
 
 impl AttackInfo {
@@ -43,6 +47,10 @@ impl AttackInfo {
             pawn: [[0; 64]; 2],
             knight: [0; 64],
             king: [0; 64],
+            bishop_occ_mask: [0; 64],
+            bishop_attack: [[0; 512]; 64],
+            rook_occ_mask: [0; 64],
+            rook_attack: [[0; 4096]; 64],
         }
     }
 }
@@ -344,4 +352,22 @@ pub fn set_occ(ind: usize, relevant_bits: u32, mut occ_mask: BB) -> BB {
         }
     }
     occ
+}
+
+fn get_bishop_attack(attack: &mut AttackInfo, sq: usize, mut blocker_board: BB) -> BB {
+    blocker_board &= attack.bishop_occ_mask[sq];
+    blocker_board *= BISHOP_MAGICS[sq];
+    blocker_board >>= 64 - BISHOP_RELEVANT_BITS[sq];
+    attack.bishop_attack[sq][blocker_board as usize]
+}
+
+fn get_rook_attack(attack: &mut AttackInfo, sq: usize, mut blocker_board: BB) -> BB {
+    blocker_board &= attack.rook_occ_mask[sq];
+    blocker_board *= ROOK_MAGICS[sq];
+    blocker_board >>= 64 - ROOK_RELEVANT_BITS[sq];
+    attack.rook_attack[sq][blocker_board as usize]
+}
+
+fn get_queen_attack(attack: &mut AttackInfo, sq: usize, blocker_board: BB) -> BB {
+    get_bishop_attack(attack, sq, blocker_board) | get_rook_attack(attack, sq, blocker_board)
 }
