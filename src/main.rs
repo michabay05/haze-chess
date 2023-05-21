@@ -6,6 +6,7 @@ mod engine;
 mod fen;
 mod magic_consts;
 mod magics;
+mod moves;
 
 fn main() {
     engine::test();

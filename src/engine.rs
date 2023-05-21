@@ -12,7 +12,7 @@ impl Engine {
     fn new() -> Self {
         let mut this = Self {
             attack: AttackInfo::new(),
-	    board: Board::from_fen(FEN_POSITIONS[2]),
+            board: Board::from_fen(FEN_POSITIONS[2]),
         };
         this.init();
         this

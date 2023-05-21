@@ -81,8 +81,7 @@ fn parse_pieces(fen_piece: &str, pos: &mut Position) {
             if piece_color == PieceColor::Both as usize {
                 continue;
             }
-            pos.piece[Piece::from_char(piece_char).unwrap() as usize]
-                .set(sq as usize);
+            pos.piece[Piece::from_char(piece_char).unwrap() as usize].set(sq as usize);
             // Increment the current square
             sq += 1;
         }

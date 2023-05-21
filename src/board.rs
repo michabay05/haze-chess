@@ -1,7 +1,7 @@
-use crate::SQ;
 use crate::bb::{BBUtil, BB};
 use crate::consts::{Piece, PieceColor, Sq};
 use crate::fen;
+use crate::SQ;
 
 pub struct Position {
     pub piece: [BB; 12],
@@ -19,7 +19,7 @@ impl Position {
     pub fn update_units(&mut self) {
         self.units.fill(0);
         for i in 0..12 {
-	    self.units[i / 6] |= self.piece[i];
+            self.units[i / 6] |= self.piece[i];
         }
         self.units[PieceColor::Both as usize] =
             self.units[PieceColor::Light as usize] | self.units[PieceColor::Dark as usize];
@@ -90,8 +90,8 @@ impl Board {
 
     pub fn find_piece(&self, sq: usize) -> Option<Piece> {
         for i in 0..12 {
-	    if self.pos.piece[i].get(sq) {
-		return Piece::from_num(i);
+            if self.pos.piece[i].get(sq) {
+                return Piece::from_num(i);
             }
         }
         None
@@ -122,10 +122,7 @@ impl Board {
             }
         );
         self.print_castling();
-        println!(
-            "         Enpassant: {}",
-	    Sq::to_str(self.state.enpassant as usize)
-        );
+        println!("         Enpassant: {}", Sq::to_str(self.state.enpassant));
         println!("        Full Moves: {}", self.state.full_moves);
     }
 

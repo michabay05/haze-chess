@@ -236,7 +236,7 @@ impl Sq {
         }
     }
 
-    pub fn to_str(sq_num: usize) -> String {
-        STR_COORDS[sq_num].to_string()
+    pub fn to_str(sq_num: Self) -> String {
+        STR_COORDS[sq_num as usize].to_string()
     }
 }
