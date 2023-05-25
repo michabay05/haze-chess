@@ -77,7 +77,7 @@ fn parse_pieces(fen_piece: &str, pos: &mut Position) {
             // Add offset value to square counter
             sq += offset;
         } else if piece_char.is_ascii_alphabetic() {
-            let (piece_color, piece_type) = Piece::to_tuple(Piece::from_char(piece_char));
+            let (piece_color, _) = Piece::to_tuple(Piece::from_char(piece_char));
             if piece_color == PieceColor::Both as usize {
                 continue;
             }

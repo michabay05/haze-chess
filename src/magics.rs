@@ -82,7 +82,7 @@ fn find_magic_number(sq: usize, relevant_bits: u32, piece: PieceType) -> u64 {
     }
     println!(
         "Failed to find magic number on {}",
-        Sq::to_str(Sq::from_num(sq))
+        Sq::to_string(Sq::from_num(sq))
     );
     return 0;
 }

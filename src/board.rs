@@ -1,8 +1,10 @@
-use crate::bb::{BBUtil, BB};
+use crate::attack::AttackInfo;
+use crate::bb::{BB, BBUtil};
 use crate::consts::{Piece, PieceColor, Sq};
 use crate::fen;
 use crate::SQ;
 
+#[derive(Clone)]
 pub struct Position {
     pub piece: [BB; 12],
     pub units: [BB; 3],
@@ -26,6 +28,7 @@ impl Position {
     }
 }
 
+#[derive(Clone)]
 pub struct State {
     pub side: PieceColor,
     pub enpassant: Sq,
@@ -71,6 +74,7 @@ impl State {
     }
 }
 
+#[derive(Clone)]
 pub struct Board {
     pub pos: Position,
     pub state: State,
@@ -103,11 +107,7 @@ impl Board {
             print!("  {} |", 8 - r);
             for f in 0..8 {
                 let piece = self.find_piece(SQ!(r, f));
-                let (color, _) = Piece::to_tuple(piece);
-                let mut piece_char = Piece::to_char(piece);
-                if color == (PieceColor::Dark as usize) {
-                    piece_char = piece_char.to_ascii_lowercase();
-                }
+                let piece_char = Piece::to_char(piece);
                 print!(" {} |", piece_char);
             }
             println!("\n    +---+---+---+---+---+---+---+---+");
@@ -122,8 +122,8 @@ impl Board {
             }
         );
         self.print_castling();
-        println!("         Enpassant: {}", Sq::to_str(self.state.enpassant));
-        println!("        Full Moves: {}", self.state.full_moves);
+        println!("         Enpassant: {}", Sq::to_string(self.state.enpassant));
+        println!("        Full Moves: {}\n", self.state.full_moves);
     }
 
     pub fn print_castling(&self) {
@@ -148,4 +148,39 @@ impl Board {
         }
         println!("{}", castling_ltrs.iter().collect::<String>());
     }
+
+    pub fn is_in_check(&self, attack_info: &AttackInfo, side: PieceColor) -> bool {
+	let king_type = if side == PieceColor::Light {
+	    Piece::DK
+	} else {
+	    Piece::LK
+	} as usize;
+	sq_attacked(&self, attack_info, Sq::from_num(self.pos.piece[king_type].lsb()), side)
+    }
+}
+
+pub fn sq_attacked(board: &Board, attack_info: &AttackInfo, sq: Sq, side: PieceColor) -> bool {
+    assert!(side != PieceColor::Both);
+    if side == PieceColor::Light && ((attack_info.pawn[PieceColor::Dark as usize][sq as usize] & board.pos.piece[Piece::LP as usize]) != 0) {
+        return true;
+    }
+    if side == PieceColor::Dark && ((attack_info.pawn[PieceColor::Light as usize][sq as usize] & board.pos.piece[Piece::DP as usize]) != 0) {
+        return true;
+    }
+    if (attack_info.knight[sq as usize] & board.pos.piece[(side as usize) * 6 + 1]) != 0 {
+        return true;
+    }
+    if (attack_info.get_bishop_attack(sq, board.pos.units[PieceColor::Both as usize]) & board.pos.piece[(side as usize) * 6 + 2]) != 0 {
+        return true;
+    }
+    if (attack_info.get_rook_attack(sq, board.pos.units[PieceColor::Both as usize]) & board.pos.piece[(side as usize) * 6 + 3]) != 0 {
+        return true;
+    }
+    if (attack_info.get_queen_attack(sq, board.pos.units[PieceColor::Both as usize]) & board.pos.piece[(side as usize) * 6 + 4]) != 0 {
+        return true;
+    }
+    if (attack_info.king[sq as usize] & board.pos.piece[(side as usize) * 6 + 5]) != 0 {
+        return true;
+    }
+    return false;
 }

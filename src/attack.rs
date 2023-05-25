@@ -1,7 +1,7 @@
 #![allow(unused_comparisons)]
 
 use crate::bb::{BBUtil, BB};
-use crate::consts::{Direction, PieceColor, Sq};
+use crate::consts::{Direction, PieceColor, PieceType, Sq};
 use crate::magic_consts::{BISHOP_MAGICS, ROOK_MAGICS};
 use crate::{COL, ROW, SQ};
 
@@ -53,10 +53,32 @@ impl AttackInfo {
             rook_attack: [[0; 4096]; 64],
         }
     }
+
+    pub fn get_bishop_attack(&self, sq: Sq, blocker_board: BB) -> BB {
+	let mut blocker = blocker_board;
+        blocker &= self.bishop_occ_mask[sq as usize];
+	let num = u128::from(blocker) * u128::from(BISHOP_MAGICS[sq as usize]);
+        blocker = (num as u64) >> (64 - BISHOP_RELEVANT_BITS[sq as usize]);
+        self.bishop_attack[sq as usize][blocker as usize]
+    }
+
+    pub fn get_rook_attack(&self, sq: Sq, blocker_board: BB) -> BB {
+	let mut blocker = blocker_board;
+        blocker &= self.rook_occ_mask[sq as usize];
+	let num = u128::from(blocker) * u128::from(ROOK_MAGICS[sq as usize]);
+        blocker = (num as u64) >> (64 - ROOK_RELEVANT_BITS[sq as usize]);
+        self.rook_attack[sq as usize][blocker as usize]
+    }
+
+    pub fn get_queen_attack(&self, sq: Sq, blocker_board: BB) -> BB {
+        self.get_bishop_attack(sq, blocker_board) | self.get_rook_attack(sq, blocker_board)
+    }
 }
 
 pub fn init(attack: &mut AttackInfo) {
     gen_leapers(attack);
+    gen_sliding(attack, PieceType::Bishop);
+    gen_sliding(attack, PieceType::Rook);
 }
 
 fn gen_leapers(attack_info: &mut AttackInfo) {
@@ -65,6 +87,34 @@ fn gen_leapers(attack_info: &mut AttackInfo) {
         gen_pawn(attack_info, sq, PieceColor::Dark);
         gen_knight(attack_info, sq);
         gen_king(attack_info, sq);
+    }
+}
+
+fn gen_sliding(attack_info: &mut AttackInfo, piece: PieceType) {
+    for sq in 0..64 {
+	attack_info.bishop_occ_mask[sq] = gen_bishop_occ(sq);
+	attack_info.rook_occ_mask[sq] = gen_rook_occ(sq);
+
+	let curr_mask = if piece == PieceType::Bishop {
+	    attack_info.bishop_occ_mask[sq]
+	} else {
+	    attack_info.rook_occ_mask[sq]
+	};
+
+	let bit_count = curr_mask.count_ones();
+	for count in 0..(1 << bit_count) {
+	    let occupancy = set_occ(count, bit_count, curr_mask);
+            let magic_ind;
+	    if piece == PieceType::Bishop {
+		let num = u128::from(occupancy) * u128::from(BISHOP_MAGICS[sq]);
+		magic_ind = (num as u64) >> 64 - bit_count;
+		attack_info.bishop_attack[sq][magic_ind as usize] = gen_bishop_attack(sq, occupancy);
+	    } else {
+		let num = u128::from(occupancy) * u128::from(ROOK_MAGICS[sq]);
+		magic_ind = (num as u64) >> 64 - bit_count;
+		attack_info.rook_attack[sq][magic_ind as usize] = gen_rook_attack(sq, occupancy);
+	    }
+	}
     }
 }
 
@@ -352,22 +402,4 @@ pub fn set_occ(ind: usize, relevant_bits: u32, mut occ_mask: BB) -> BB {
         }
     }
     occ
-}
-
-fn get_bishop_attack(attack: &mut AttackInfo, sq: usize, mut blocker_board: BB) -> BB {
-    blocker_board &= attack.bishop_occ_mask[sq];
-    blocker_board *= BISHOP_MAGICS[sq];
-    blocker_board >>= 64 - BISHOP_RELEVANT_BITS[sq];
-    attack.bishop_attack[sq][blocker_board as usize]
-}
-
-fn get_rook_attack(attack: &mut AttackInfo, sq: usize, mut blocker_board: BB) -> BB {
-    blocker_board &= attack.rook_occ_mask[sq];
-    blocker_board *= ROOK_MAGICS[sq];
-    blocker_board >>= 64 - ROOK_RELEVANT_BITS[sq];
-    attack.rook_attack[sq][blocker_board as usize]
-}
-
-fn get_queen_attack(attack: &mut AttackInfo, sq: usize, blocker_board: BB) -> BB {
-    get_bishop_attack(attack, sq, blocker_board) | get_rook_attack(attack, sq, blocker_board)
 }

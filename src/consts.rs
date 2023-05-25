@@ -53,15 +53,20 @@ pub enum PieceType {
     King,
 }
 
-#[rustfmt::skip]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq)]
 pub enum Piece {
-    LP, DP,
-    LN, DN,
-    LB, DB,
-    LR, DR,
-    LQ, DQ,
-    LK, DK
+    LP, 
+    LN, 
+    LB, 
+    LR, 
+    LQ, 
+    LK, 
+    DP,
+    DN,
+    DB,
+    DR,
+    DQ,   
+    DK
 }
 
 impl Piece {
@@ -125,6 +130,7 @@ impl Piece {
 }
 
 #[allow(non_camel_case_types)]
+#[derive(Copy, Clone)]
 pub enum Direction {
     NORTH = 8,
     SOUTH = -8,
@@ -145,7 +151,7 @@ pub enum Direction {
 }
 
 #[rustfmt::skip]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq)]
 pub enum Sq {
     A8, B8, C8, D8, E8, F8, G8, H8,
     A7, B7, C7, D7, E7, F7, G7, H7,
@@ -236,7 +242,7 @@ impl Sq {
         }
     }
 
-    pub fn to_str(sq_num: Self) -> String {
+    pub fn to_string(sq_num: Self) -> String {
         STR_COORDS[sq_num as usize].to_string()
     }
 }
