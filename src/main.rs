@@ -9,7 +9,12 @@ mod magics;
 mod move_gen;
 mod moves;
 mod perft;
+mod perft_test;
+
+use std::env;
 
 fn main() {
-    engine::test();
+    let args = env::args().collect::<Vec<String>>();
+    perft_test::test(args);
+    // engine::test();
 }

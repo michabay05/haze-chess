@@ -32,7 +32,7 @@ pub trait MoveUtil {
         enpassant: bool,
         castling: bool,
     ) -> Self;
-    fn to_string(&self) -> String;
+    fn to_str(&self) -> String;
 }
 
 impl MoveUtil for Move {
@@ -111,8 +111,7 @@ impl MoveUtil for Move {
         )
     }
 
-    fn to_string(&self) -> String {
-	println!("HELLO!!!!");
+    fn to_str(&self) -> String {
         let source_str = Sq::to_string(self.source());
         let target_str = Sq::to_string(self.target());
         let promoted_str = Piece::to_char(self.promoted());
@@ -157,17 +156,12 @@ pub fn make(main: &mut Board, attack_info: &AttackInfo, mv: Move, move_flag: Mov
 	main.pos.piece[piece].set(target);
 
 	if is_capture {
-	    let start = if main.state.side == PieceColor::Light {
-		Piece::DP
+	    let (start, end) = if main.state.side == PieceColor::Light {
+		(Piece::DP as usize, Piece::DK as usize)
 	    } else {
-		Piece::LP
-	    } as usize;
-	    let end = if main.state.side == PieceColor::Light {
-		Piece::DK
-	    } else {
-		Piece::LK
-	    } as usize;
-	    for bb_piece in start..end {
+		(Piece::LP as usize, Piece::LK as usize)
+	    };
+	    for bb_piece in start..=end {
 		if main.pos.piece[bb_piece].get(target) {
 		    main.pos.piece[bb_piece].pop(target);
 		    break;
@@ -197,9 +191,9 @@ pub fn make(main: &mut Board, attack_info: &AttackInfo, mv: Move, move_flag: Mov
 	main.state.enpassant = Sq::NoSq;
 	if is_twosquare {
 	    if main.state.side == PieceColor::Light {
-		main.state.enpassant = Sq::from_num(target + Direction::NORTH as usize);
+		main.state.enpassant = Sq::from_num((target as i32 + Direction::NORTH as i32) as usize);
 	    } else {
-		main.state.enpassant = Sq::from_num(target + Direction::SOUTH as usize);
+		main.state.enpassant = Sq::from_num((target as i32 + Direction::SOUTH as i32) as usize);
 	    }
 	}
 
@@ -239,7 +233,12 @@ pub fn make(main: &mut Board, attack_info: &AttackInfo, mv: Move, move_flag: Mov
 	main.pos.update_units();
 	main.state.change_side();
 
-	if main.is_in_check(attack_info, main.state.side) {
+	let king_type = if main.state.side == PieceColor::Light {
+	    Piece::DK
+	} else {
+	    Piece::LK
+	} as usize;
+	if board::sq_attacked(&main.pos, attack_info, Sq::from_num(main.pos.piece[king_type].lsb()), main.state.side) {
 	    *main = clone;
 	    return false;
 	} else {
@@ -251,7 +250,7 @@ pub fn make(main: &mut Board, attack_info: &AttackInfo, mv: Move, move_flag: Mov
 	}
     } else {
 	if mv.is_capture() {
-	    return make(main, attack_info, mv, MoveFlag::CapturesOnly);
+	    return make(main, attack_info, mv, MoveFlag::AllMoves);
 	} else {
 	    return false;
 	}

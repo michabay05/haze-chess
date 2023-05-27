@@ -3,7 +3,7 @@ use std::time::Instant;
 use crate::attack::AttackInfo;
 use crate::board::Board;
 use crate::move_gen::{self, MoveList};
-use crate::moves::{self, MoveFlag};
+use crate::moves::{self, MoveUtil, MoveFlag};
 
 fn driver(board: &mut Board, attack_info: &AttackInfo, depth: usize, node_count: &mut usize) {
     if depth == 0 {
@@ -26,7 +26,9 @@ fn driver(board: &mut Board, attack_info: &AttackInfo, depth: usize, node_count:
 
 
 pub fn test(board: &mut Board, attack_info: &AttackInfo, depth: usize) {
-    println!("\n--------------- Performance Test (d = {depth}) ---------------");
+    // REMOVED WHEN TESTING
+    // println!("\n--------------- Performance Test (d = {depth}) ---------------");
+    // ==============================
     let mut total_nodes = 0;
     let mut ml = MoveList::new();
     move_gen::generate(board, attack_info, &mut ml);
@@ -43,10 +45,18 @@ pub fn test(board: &mut Board, attack_info: &AttackInfo, depth: usize) {
 	let nodes_searched = total_nodes;
 	driver(board, attack_info, depth - 1, &mut total_nodes);
 	*board = clone;
-	println!("     {}: {}", mv.to_string(), total_nodes - nodes_searched);
+	let move_str = mv.to_str();
+	let move_str = if mv.promoted().is_some() {
+	    move_str
+	} else {
+	    move_str[0..4].to_string()
+	};
+	println!("{} {}", move_str, total_nodes - nodes_searched);
     }
-    let end = Instant::now();
-    println!("\n     Depth: {depth}");
-    println!("     Nodes: {total_nodes}");
-    println!("      Time: {}", end.duration_since(start).as_secs());
+    println!("\n{total_nodes}");
+    // REMOVED WHEN TESTING
+    // let end = Instant::now();
+    // println!("     Nodes: {total_nodes}");
+    // println!("      Time: {}", end.duration_since(start).as_secs());
+    // ==============================
 }

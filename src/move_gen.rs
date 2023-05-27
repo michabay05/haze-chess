@@ -129,8 +129,9 @@ fn generate_pawns(board: &Board, attack_info: &AttackInfo, ml: &mut MoveList) {
                 }
             }
         }
+
         attack_copy = attack_info.pawn[board.state.side as usize][source as usize]
-            & board.pos.units[(board.state.side as usize) ^ 1];
+            & board.pos.units[board.state.xside as usize];
         while attack_copy > 0 {
             target = attack_copy.pop_lsb() as i32;
             if (source >= promotion_start as i32) && (source <= (promotion_start as i32 + 7)) {
@@ -152,7 +153,8 @@ fn generate_pawns(board: &Board, attack_info: &AttackInfo, ml: &mut MoveList) {
                 // If false, this move is a normal capture
                 ml.moves.push(Move::encode(
                     Sq::from_num(source as usize),
-                    Sq::from_num((target + (direction as i32)) as usize),
+                    // Sq::from_num((target + (direction as i32)) as usize),
+                    Sq::from_num(target as usize),
                     piece,
                     None,
                     true,
@@ -389,8 +391,8 @@ fn gen_light_castling(board: &Board, attack_info: &AttackInfo, ml: &mut MoveList
         if !board.pos.units[PieceColor::Both as usize].get(Sq::F1 as usize)
             && !board.pos.units[PieceColor::Both as usize].get(Sq::G1 as usize)
         {
-            if !board::sq_attacked(board, attack_info, Sq::E1, PieceColor::Dark)
-                && !board::sq_attacked(board, attack_info, Sq::F1, PieceColor::Dark)
+            if !board::sq_attacked(&board.pos, attack_info, Sq::E1, PieceColor::Dark)
+                && !board::sq_attacked(&board.pos, attack_info, Sq::F1, PieceColor::Dark)
             {
                 ml.moves
                     .push(Move::from_str("e1g1", Piece::LK, false, false, false, true));
@@ -402,8 +404,8 @@ fn gen_light_castling(board: &Board, attack_info: &AttackInfo, ml: &mut MoveList
                 && !board.pos.units[PieceColor::Both as usize].get(Sq::C1 as usize)
                 && !board.pos.units[PieceColor::Both as usize].get(Sq::D1 as usize)
             {
-                if !board::sq_attacked(board, attack_info, Sq::D1, PieceColor::Dark)
-                    && !board::sq_attacked(board, attack_info, Sq::E1, PieceColor::Dark)
+                if !board::sq_attacked(&board.pos, attack_info, Sq::D1, PieceColor::Dark)
+                    && !board::sq_attacked(&board.pos, attack_info, Sq::E1, PieceColor::Dark)
                 {
                     ml.moves
                         .push(Move::from_str("e1c1", Piece::LK, false, false, false, true));
@@ -419,8 +421,8 @@ fn gen_dark_castling(board: &Board, attack_info: &AttackInfo, ml: &mut MoveList)
         if !board.pos.units[PieceColor::Both as usize].get(Sq::F8 as usize)
             && !board.pos.units[PieceColor::Both as usize].get(Sq::G8 as usize)
         {
-            if !board::sq_attacked(board, attack_info, Sq::E8, PieceColor::Light)
-                && !board::sq_attacked(board, attack_info, Sq::F8, PieceColor::Light)
+            if !board::sq_attacked(&board.pos, attack_info, Sq::E8, PieceColor::Light)
+                && !board::sq_attacked(&board.pos, attack_info, Sq::F8, PieceColor::Light)
             {
                 ml.moves
                     .push(Move::from_str("e8g8", Piece::LK, false, false, false, true));
@@ -432,8 +434,8 @@ fn gen_dark_castling(board: &Board, attack_info: &AttackInfo, ml: &mut MoveList)
                 && !board.pos.units[PieceColor::Both as usize].get(Sq::C8 as usize)
                 && !board.pos.units[PieceColor::Both as usize].get(Sq::D8 as usize)
             {
-                if !board::sq_attacked(board, attack_info, Sq::D8, PieceColor::Light)
-                    && !board::sq_attacked(board, attack_info, Sq::E8, PieceColor::Light)
+                if !board::sq_attacked(&board.pos, attack_info, Sq::D8, PieceColor::Light)
+                    && !board::sq_attacked(&board.pos, attack_info, Sq::E8, PieceColor::Light)
                 {
                     ml.moves
                         .push(Move::from_str("e8c8", Piece::LK, false, false, false, true));
