@@ -20,7 +20,14 @@ macro_rules! COL {
     };
 }
 
-pub use {COL, ROW, SQ};
+#[macro_export]
+macro_rules! FLIP_SQ {
+    ($sq: expr) => {
+        $sq ^ 56
+    };
+}
+
+pub use {COL, FLIP_SQ, ROW, SQ};
 
 #[rustfmt::skip]
 const PIECE_CHAR: [char; 13] = ['P', 'N', 'B', 'R', 'Q', 'K', 'p', 'n', 'b', 'r', 'q', 'k', ' '];
@@ -55,18 +62,18 @@ pub enum PieceType {
 
 #[derive(Copy, Clone, PartialEq)]
 pub enum Piece {
-    LP, 
-    LN, 
-    LB, 
-    LR, 
-    LQ, 
-    LK, 
+    LP,
+    LN,
+    LB,
+    LR,
+    LQ,
+    LK,
     DP,
     DN,
     DB,
     DR,
-    DQ,   
-    DK
+    DQ,
+    DK,
 }
 
 impl Piece {

@@ -1,7 +1,7 @@
+use crate::attack::AttackInfo;
 use crate::bb::BBUtil;
 use crate::board::{self, Board};
 use crate::consts::{Direction, Piece, PieceColor, Sq};
-use crate::attack::AttackInfo;
 
 pub type Move = u32;
 
@@ -119,89 +119,85 @@ impl MoveUtil for Move {
     }
 }
 
-
 #[derive(PartialEq)]
 pub enum MoveFlag {
     AllMoves,
-    CapturesOnly
+    CapturesOnly,
 }
 
 const CASTLING_RIGHTS: [usize; 64] = [
-     7, 15, 15, 15,  3, 15, 15, 11,
-    15, 15, 15, 15, 15, 15, 15, 15,
-    15, 15, 15, 15, 15, 15, 15, 15,
-    15, 15, 15, 15, 15, 15, 15, 15,
-    15, 15, 15, 15, 15, 15, 15, 15,
-    15, 15, 15, 15, 15, 15, 15, 15,
-    15, 15, 15, 15, 15, 15, 15, 15,
-    13, 15, 15, 15, 12, 15, 15, 14
+    7, 15, 15, 15, 3, 15, 15, 11, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15,
+    15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15,
+    15, 15, 15, 15, 15, 15, 15, 15, 13, 15, 15, 15, 12, 15, 15, 14,
 ];
 
 pub fn make(main: &mut Board, attack_info: &AttackInfo, mv: Move, move_flag: MoveFlag) -> bool {
     if move_flag == MoveFlag::AllMoves {
-	let clone = main.clone();
+        let clone = main.clone();
 
-	// Extract information about the move
-	let source = mv.source() as usize;
-	let target = mv.target() as usize;
-	let piece = Piece::to_num(Some(mv.piece()));
-	let promoted = mv.promoted();
-	let is_capture = mv.is_capture();
-	let is_twosquare = mv.is_twosquare();
-	let is_enpassant = mv.is_enpassant();
-	let is_castling = mv.is_castling();
+        // Extract information about the move
+        let source = mv.source() as usize;
+        let target = mv.target() as usize;
+        let piece = Piece::to_num(Some(mv.piece()));
+        let promoted = mv.promoted();
+        let is_capture = mv.is_capture();
+        let is_twosquare = mv.is_twosquare();
+        let is_enpassant = mv.is_enpassant();
+        let is_castling = mv.is_castling();
 
-	// Move piece from source to target by removing source bit and turning on the target bit
-	main.pos.piece[piece].pop(source);
-	main.pos.piece[piece].set(target);
+        // Move piece from source to target by removing source bit and turning on the target bit
+        main.pos.piece[piece].pop(source);
+        main.pos.piece[piece].set(target);
 
-	if is_capture {
-	    let (start, end) = if main.state.side == PieceColor::Light {
-		(Piece::DP as usize, Piece::DK as usize)
-	    } else {
-		(Piece::LP as usize, Piece::LK as usize)
-	    };
-	    for bb_piece in start..=end {
-		if main.pos.piece[bb_piece].get(target) {
-		    main.pos.piece[bb_piece].pop(target);
-		    break;
-		}
-	    }
-	}
+        if is_capture {
+            let (start, end) = if main.state.side == PieceColor::Light {
+                (Piece::DP as usize, Piece::DK as usize)
+            } else {
+                (Piece::LP as usize, Piece::LK as usize)
+            };
+            for bb_piece in start..=end {
+                if main.pos.piece[bb_piece].get(target) {
+                    main.pos.piece[bb_piece].pop(target);
+                    break;
+                }
+            }
+        }
 
-	if promoted.is_some() {
-	    let promoted_num = Piece::to_num(promoted);
-	    main.pos.piece[piece].pop(target);
-	    main.pos.piece[promoted_num].set(target);
-	}
+        if promoted.is_some() {
+            let promoted_num = Piece::to_num(promoted);
+            main.pos.piece[piece].pop(target);
+            main.pos.piece[promoted_num].set(target);
+        }
 
-	if is_enpassant {
-	    let mut pawn_type; 
-	    let mut direction; 
-	    if main.state.side == PieceColor::Light {
-		pawn_type = Piece::DP;
-		direction = Direction::NORTH;
-	    } else {
-		pawn_type = Piece::LP;
-		direction = Direction::SOUTH;
-	    }
-	    main.pos.piece[pawn_type as usize].pop(target + direction as usize);
-	}
+        if is_enpassant {
+            let mut pawn_type;
+            let mut direction;
+            if main.state.side == PieceColor::Light {
+                pawn_type = Piece::DP;
+                direction = Direction::NORTH;
+            } else {
+                pawn_type = Piece::LP;
+                direction = Direction::SOUTH;
+            }
+            main.pos.piece[pawn_type as usize].pop((target as i32 + direction as i32) as usize);
+        }
 
-	main.state.enpassant = Sq::NoSq;
-	if is_twosquare {
-	    if main.state.side == PieceColor::Light {
-		main.state.enpassant = Sq::from_num((target as i32 + Direction::NORTH as i32) as usize);
-	    } else {
-		main.state.enpassant = Sq::from_num((target as i32 + Direction::SOUTH as i32) as usize);
-	    }
-	}
+        main.state.enpassant = Sq::NoSq;
+        if is_twosquare {
+            if main.state.side == PieceColor::Light {
+                main.state.enpassant =
+                    Sq::from_num((target as i32 + Direction::NORTH as i32) as usize);
+            } else {
+                main.state.enpassant =
+                    Sq::from_num((target as i32 + Direction::SOUTH as i32) as usize);
+            }
+        }
 
-	if is_castling {
-	    let mut rook_type;
-	    let mut source_castling;
-	    let mut target_castling;
-	    match Sq::from_num(target) {
+        if is_castling {
+            let mut rook_type;
+            let mut source_castling;
+            let mut target_castling;
+            match Sq::from_num(target) {
 		Sq::G1 => {
 		    rook_type = Piece::LR;
 		    source_castling = Sq::H1;
@@ -224,35 +220,40 @@ pub fn make(main: &mut Board, attack_info: &AttackInfo, mv: Move, move_flag: Mov
 		},
 		_ => unreachable!("Target castling square should only be [ G1, C1 ] for white and [ G8, C8 ] for black"),
 	    };
-	    main.pos.piece[rook_type as usize].pop(source_castling as usize);
-	    main.pos.piece[rook_type as usize].set(target_castling as usize);
-	}
-	main.state.castling &= CASTLING_RIGHTS[source] as u8;
-	main.state.castling &= CASTLING_RIGHTS[target] as u8;
+            main.pos.piece[rook_type as usize].pop(source_castling as usize);
+            main.pos.piece[rook_type as usize].set(target_castling as usize);
+        }
+        main.state.castling &= CASTLING_RIGHTS[source] as u8;
+        main.state.castling &= CASTLING_RIGHTS[target] as u8;
 
-	main.pos.update_units();
-	main.state.change_side();
+        main.pos.update_units();
+        main.state.change_side();
 
-	let king_type = if main.state.side == PieceColor::Light {
-	    Piece::DK
-	} else {
-	    Piece::LK
-	} as usize;
-	if board::sq_attacked(&main.pos, attack_info, Sq::from_num(main.pos.piece[king_type].lsb()), main.state.side) {
-	    *main = clone;
-	    return false;
-	} else {
-	    // Increment full moves
-	    if main.state.side == PieceColor::Light {
-		main.state.full_moves += 1;
-	    }
-	    return true;
-	}
+        let king_type = if main.state.side == PieceColor::Light {
+            Piece::DK
+        } else {
+            Piece::LK
+        } as usize;
+        if board::sq_attacked(
+            &main.pos,
+            attack_info,
+            Sq::from_num(main.pos.piece[king_type].lsb()),
+            main.state.side,
+        ) {
+            *main = clone;
+            return false;
+        } else {
+            // Increment full moves
+            if main.state.side == PieceColor::Light {
+                main.state.full_moves += 1;
+            }
+            return true;
+        }
     } else {
-	if mv.is_capture() {
-	    return make(main, attack_info, mv, MoveFlag::AllMoves);
-	} else {
-	    return false;
-	}
+        if mv.is_capture() {
+            return make(main, attack_info, mv, MoveFlag::AllMoves);
+        } else {
+            return false;
+        }
     }
 }

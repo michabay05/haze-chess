@@ -1,5 +1,5 @@
 use crate::attack::AttackInfo;
-use crate::bb::{BB, BBUtil};
+use crate::bb::{BBUtil, BB};
 use crate::consts::{Piece, PieceColor, Sq};
 use crate::fen;
 use crate::SQ;
@@ -126,7 +126,10 @@ impl Board {
             }
         );
         self.print_castling();
-        println!("         Enpassant: {}", Sq::to_string(self.state.enpassant));
+        println!(
+            "         Enpassant: {}",
+            Sq::to_string(self.state.enpassant)
+        );
         println!("        Full Moves: {}\n", self.state.full_moves);
     }
 
@@ -154,33 +157,55 @@ impl Board {
     }
 
     pub fn is_in_check(&self, attack_info: &AttackInfo, side: PieceColor) -> bool {
-	let king_type = if side == PieceColor::Light {
-	    Piece::DK
-	} else {
-	    Piece::LK
-	} as usize;
-	sq_attacked(&self.pos, attack_info, Sq::from_num(self.pos.piece[king_type].lsb()), side)
+        let king_type = if side == PieceColor::Light {
+            Piece::DK
+        } else {
+            Piece::LK
+        } as usize;
+        sq_attacked(
+            &self.pos,
+            attack_info,
+            Sq::from_num(self.pos.piece[king_type].lsb()),
+            side,
+        )
     }
 }
 
 pub fn sq_attacked(pos: &Position, attack_info: &AttackInfo, sq: Sq, side: PieceColor) -> bool {
     assert!(side != PieceColor::Both);
-    if side == PieceColor::Light && ((attack_info.pawn[PieceColor::Dark as usize][sq as usize] & pos.piece[Piece::LP as usize]) != 0) {
+    if side == PieceColor::Light
+        && ((attack_info.pawn[PieceColor::Dark as usize][sq as usize]
+            & pos.piece[Piece::LP as usize])
+            != 0)
+    {
         return true;
     }
-    if side == PieceColor::Dark && ((attack_info.pawn[PieceColor::Light as usize][sq as usize] & pos.piece[Piece::DP as usize]) != 0) {
+    if side == PieceColor::Dark
+        && ((attack_info.pawn[PieceColor::Light as usize][sq as usize]
+            & pos.piece[Piece::DP as usize])
+            != 0)
+    {
         return true;
     }
     if (attack_info.knight[sq as usize] & pos.piece[(side as usize) * 6 + 1]) != 0 {
         return true;
     }
-    if (attack_info.get_bishop_attack(sq, pos.units[PieceColor::Both as usize]) & pos.piece[(side as usize) * 6 + 2]) != 0 {
+    if (attack_info.get_bishop_attack(sq, pos.units[PieceColor::Both as usize])
+        & pos.piece[(side as usize) * 6 + 2])
+        != 0
+    {
         return true;
     }
-    if (attack_info.get_rook_attack(sq, pos.units[PieceColor::Both as usize]) & pos.piece[(side as usize) * 6 + 3]) != 0 {
+    if (attack_info.get_rook_attack(sq, pos.units[PieceColor::Both as usize])
+        & pos.piece[(side as usize) * 6 + 3])
+        != 0
+    {
         return true;
     }
-    if (attack_info.get_queen_attack(sq, pos.units[PieceColor::Both as usize]) & pos.piece[(side as usize) * 6 + 4]) != 0 {
+    if (attack_info.get_queen_attack(sq, pos.units[PieceColor::Both as usize])
+        & pos.piece[(side as usize) * 6 + 4])
+        != 0
+    {
         return true;
     }
     if (attack_info.king[sq as usize] & pos.piece[(side as usize) * 6 + 5]) != 0 {

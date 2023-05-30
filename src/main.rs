@@ -11,9 +11,11 @@ mod magics;
 mod move_gen;
 mod moves;
 mod perft;
+mod search;
 
 use std::env;
 
 fn main() {
-    engine::test();
+    let mut engine = engine::Engine::new();
+    engine.test();
 }

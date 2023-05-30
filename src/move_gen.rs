@@ -60,13 +60,13 @@ fn generate_pawns(board: &Board, attack_info: &AttackInfo, ml: &mut MoveList) {
         piece = Piece::LP;
         promotion_start = Sq::A7;
         twosquarepush_start = Sq::A2;
-	enemy_rank_start = Sq::A8;
+        enemy_rank_start = Sq::A8;
         direction = Direction::SOUTH;
     } else {
         piece = Piece::DP;
         promotion_start = Sq::A2;
         twosquarepush_start = Sq::A7;
-	enemy_rank_start = Sq::H1;
+        enemy_rank_start = Sq::H1;
         direction = Direction::NORTH;
     }
 
@@ -242,9 +242,10 @@ fn generate_bishops(board: &Board, attack_info: &AttackInfo, ml: &mut MoveList) 
 
     while bb_copy > 0 {
         source = bb_copy.pop_lsb();
-        attack_copy = attack_info
-            .get_bishop_attack(Sq::from_num(source), board.pos.units[PieceColor::Both as usize])
-            & (!board.pos.units[color as usize]);
+        attack_copy = attack_info.get_bishop_attack(
+            Sq::from_num(source),
+            board.pos.units[PieceColor::Both as usize],
+        ) & (!board.pos.units[color as usize]);
         while attack_copy > 0 {
             target = attack_copy.pop_lsb();
             let is_capture_move = board.pos.units[enemy_color as usize].get(target);
@@ -282,9 +283,10 @@ fn generate_rooks(board: &Board, attack_info: &AttackInfo, ml: &mut MoveList) {
 
     while bb_copy > 0 {
         source = bb_copy.pop_lsb();
-        attack_copy = attack_info
-            .get_rook_attack(Sq::from_num(source), board.pos.units[PieceColor::Both as usize])
-            & (!board.pos.units[color as usize]);
+        attack_copy = attack_info.get_rook_attack(
+            Sq::from_num(source),
+            board.pos.units[PieceColor::Both as usize],
+        ) & (!board.pos.units[color as usize]);
         while attack_copy > 0 {
             target = attack_copy.pop_lsb();
             let is_capture_move = board.pos.units[enemy_color as usize].get(target);
@@ -322,9 +324,10 @@ fn generate_queens(board: &Board, attack_info: &AttackInfo, ml: &mut MoveList) {
 
     while bb_copy > 0 {
         source = bb_copy.pop_lsb();
-        attack_copy = attack_info
-            .get_queen_attack(Sq::from_num(source), board.pos.units[PieceColor::Both as usize])
-            & (!board.pos.units[color as usize]);
+        attack_copy = attack_info.get_queen_attack(
+            Sq::from_num(source),
+            board.pos.units[PieceColor::Both as usize],
+        ) & (!board.pos.units[color as usize]);
         while attack_copy > 0 {
             target = attack_copy.pop_lsb();
             let is_capture_move = board.pos.units[enemy_color as usize].get(target);
