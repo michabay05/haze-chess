@@ -1,9 +1,9 @@
-# MAZE chess engine
+# HAZE chess engine
 
 ## Quickstart
 ```
 git clone https://github.com/michabay05/maze
-cargo run
+cargo run --release
 ```
 
 ## Sources
