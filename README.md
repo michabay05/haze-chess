@@ -2,7 +2,7 @@
 
 ## Quickstart
 ```
-git clone https://github.com/michabay05/maze
+git clone https://github.com/michabay05/haze-chess
 cargo run --release
 ```
 
