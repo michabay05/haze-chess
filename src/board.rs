@@ -3,6 +3,7 @@ use crate::bb::{BBUtil, BB};
 use crate::consts::{Piece, PieceColor, Sq};
 use crate::fen;
 use crate::SQ;
+use crate::zobrist::ZobristInfo;
 
 #[derive(Clone)]
 pub struct Position {
@@ -36,6 +37,15 @@ pub struct State {
     pub castling: u8,
     pub half_moves: u32,
     pub full_moves: u32,
+    // ========= Zobrist keys
+    // The 'key' is the primary zobrist hashing key, while the 'lock'
+    // serves as the secondary hashing key. This is done to prevent the
+    // chance of collision(two positions with the same key). Even though,
+    // the chances of two positions having the same key is small, they may
+    // happen. Therefore, this chance can be significantly reduced by adding
+    // a second key to every position
+    pub key: u64,
+    pub lock: u64,
 }
 
 pub enum CastlingType {
@@ -54,6 +64,8 @@ impl State {
             castling: 0,
             half_moves: 0,
             full_moves: 0,
+            key: 0,
+            lock: 0,
         }
     }
 
@@ -92,8 +104,8 @@ impl Board {
         }
     }
 
-    pub fn from_fen(fen: &str) -> Self {
-        fen::parse(fen)
+    pub fn from_fen(fen: &str, zobrist_info: &ZobristInfo) -> Self {
+        fen::parse(fen, zobrist_info)
     }
 
     pub fn find_piece(&self, sq: usize) -> Option<Piece> {

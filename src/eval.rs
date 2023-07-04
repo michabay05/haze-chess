@@ -86,21 +86,6 @@ fn get_phase_score(pos: &Position) -> i32 {
     white_piece_score + black_piece_score
 }
 
-fn add_positional_scores(sq: usize) -> (i32, i32) {
-    let mut opening = 0;
-    let mut endgame = 0;
-    for i in 0..6 {
-        // White pieces (add)
-        opening += POSITIONAL_SCORES[Phase::Opening as usize][i][sq];
-        endgame += POSITIONAL_SCORES[Phase::Endgame as usize][i][sq];
-
-        // Black pieces (subtract)
-        opening -= POSITIONAL_SCORES[Phase::Opening as usize][i][FLIP_SQ!(sq)];
-        endgame -= POSITIONAL_SCORES[Phase::Endgame as usize][i][FLIP_SQ!(sq)];
-    }
-    (opening, endgame)
-}
-
 pub fn evaluate(
     pos: &Position,
     side: PieceColor,
@@ -130,18 +115,24 @@ pub fn evaluate(
             opening += MATERIAL_SCORES[Phase::Opening as usize][piece];
             endgame += MATERIAL_SCORES[Phase::Endgame as usize][piece];
 
-            let (positional_opening, positional_endgame) = add_positional_scores(sq);
-            opening += positional_opening;
-            endgame += positional_endgame;
+            // add_positional_scores(sq, &mut opening, &mut endgame);
+            // opening += POSITIONAL_SCORES[Phase::Opening as usize][piece % 6][sq];
+            // endgame += POSITIONAL_SCORES[Phase::Endgame as usize][piece % 6][sq];
             if let Some(val) = Piece::from_num(piece) {
                 match val {
                     Piece::LP | Piece::LN | Piece::LB | Piece::LR | Piece::LQ | Piece::LK => {
+                        opening += POSITIONAL_SCORES[Phase::Opening as usize][(val as usize) % 6][sq];
+                        endgame += POSITIONAL_SCORES[Phase::Endgame as usize][(val as usize) % 6][sq];
+
                         let (light_opening, light_endgame) =
                             eval_light_pieces(val, pos, attack_info, mask, sq);
                         opening += light_opening;
                         endgame += light_endgame;
                     }
                     Piece::DP | Piece::DN | Piece::DB | Piece::DR | Piece::DQ | Piece::DK => {
+                        opening -= POSITIONAL_SCORES[Phase::Opening as usize][(val as usize) % 6][sq];
+                        endgame -= POSITIONAL_SCORES[Phase::Endgame as usize][(val as usize) % 6][sq];
+
                         let (dark_opening, dark_endgame) =
                             eval_dark_pieces(val, pos, attack_info, mask, sq);
                         opening += dark_opening;

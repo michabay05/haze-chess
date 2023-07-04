@@ -1,20 +1,23 @@
 use crate::attack::AttackInfo;
-use crate::bb::{BBUtil, BB};
+use crate::bb::BBUtil;
 use crate::board::{self, Board};
 use crate::consts::{Piece, PieceColor, Sq};
 use crate::eval::{self, EvalMasks};
 use crate::move_gen::{self, MoveList};
 use crate::moves::{self, Move, MoveFlag, MoveUtil};
+use crate::tt::{HashTT, TTFlag};
+use crate::uci::UCIState;
+use crate::zobrist::{ZobristInfo, self, ZobristAction};
 
 const FULL_DEPTH_MOVES: u32 = 4;
 const REDUCTION_LIMIT: u32 = 3;
-const MAX_PLY: usize = 64;
+pub const MAX_PLY: usize = 64;
 
 // Mating score bounds
 // [-INFINITY, -MATE_VALUE ... -MATE_SCORE, ... SCORE ... MATE_SCORE ... MATE_VALUE, INFINITY]
 const INFINITY: i32 = 50000;
 const MATE_VALUE: i32 = 49000; // Upper bound
-const MATE_SCORE: i32 = 48000; // Lower bound
+pub const MATE_SCORE: i32 = 48000; // Lower bound
 
 const MVV_LVA: [[u32; 6]; 6] = [
     [105, 205, 305, 405, 505, 605],
@@ -37,6 +40,7 @@ pub struct SearchInfo {
     pub history: [[Move; 64]; 12],    // [piece][sq]
     pub pv_len: [u32; MAX_PLY],
     pub pv_table: [[u32; MAX_PLY]; MAX_PLY],
+    pub tt: HashTT,
 }
 
 impl SearchInfo {
@@ -50,6 +54,7 @@ impl SearchInfo {
             history: [[0; 64]; 12],
             pv_len: [0; MAX_PLY],
             pv_table: [[0; MAX_PLY]; MAX_PLY],
+            tt: HashTT::new(),
         }
     }
 }
@@ -59,19 +64,33 @@ pub fn search(
     board: &mut Board,
     attack_info: &AttackInfo,
     mask: &EvalMasks,
+    uci_state: &mut UCIState,
+    zobrist_info: &ZobristInfo,
     depth: u32,
 ) {
     *info = SearchInfo::new();
+    uci_state.stop = false;
     let mut alpha = -INFINITY;
     let mut beta = INFINITY;
-    // UCI Stuff
 
-    let mut score = 0;
+    let mut score;
     for current_depth in 1..=depth {
-        // UCI Stuff
+        if uci_state.stop {
+            break;
+        }
         info.follow_pv = true;
         // Find the best move in the current position
-        score = negamax(info, board, attack_info, mask, alpha, beta, current_depth);
+        score = negamax(
+            info,
+            board,
+            attack_info,
+            mask,
+            uci_state,
+            zobrist_info,
+            alpha,
+            beta,
+            current_depth,
+        );
         // Aspiration window
         if (score <= alpha) || (score >= beta) {
             alpha = -INFINITY;
@@ -110,29 +129,37 @@ fn negamax(
     board: &mut Board,
     attack_info: &AttackInfo,
     mask: &EvalMasks,
+    uci_state: &mut UCIState,
+    zobrist_info: &ZobristInfo,
     mut alpha: i32,
-    mut beta: i32,
+    beta: i32,
     mut depth: u32,
 ) -> i32 {
     info.pv_len[info.ply as usize] = info.ply;
     // Store the current move's score
-    let mut score = 0;
-    // Transposition stuff
+    let mut score;
+    let mut tt_flag = TTFlag::Exact;
     // Repetition stuff
     let is_pv_node = (beta - alpha) > 1;
 
-    // Transposition stuff
+    // If score of current position exists, return score instead of searching
+    // Read hash entry (if not root ply) score for current position and isn't PV node
+    let hash_score = info.tt.read_entry(board, alpha, beta, depth, info.ply);
+    if info.ply != 0 && !hash_score.is_none() && !is_pv_node {
+        return hash_score.unwrap();
+    }
+
     // Every 2047 nodes, communicate with UCI
     if (info.nodes & 2047) == 0 {
-        // UCI stuff
+        uci_state.check_up();
     }
 
     // Escape condition or Base case
     if depth == 0 {
-        return quiescence(info, board, attack_info, mask, alpha, beta);
+        return quiescence(info, board, attack_info, mask, uci_state, zobrist_info, alpha, beta);
     }
     // Exit if ply > max ply; ply should be <= 63
-    if info.ply > MAX_PLY as u32 - 1 {
+    if info.ply > (MAX_PLY - 1) as u32 {
         return eval::evaluate(&board.pos, board.state.side, attack_info, mask);
     }
     // Increment nodes
@@ -161,24 +188,30 @@ fn negamax(
         let clone = board.clone();
         info.ply += 1;
         // Repetition stuff
-        // Transposition stuff
+        if board.state.enpassant != Sq::NoSq {
+            zobrist::update(zobrist_info, ZobristAction::SetEnpassant(board.state.enpassant), board);
+        }
         board.state.enpassant = Sq::NoSq;
         board.state.change_side();
-        // Transposition stuff
+        zobrist::update(zobrist_info, ZobristAction::ChangeColor, board);
         // Search move with reduced depth to find beta-cutoffs
         score = -negamax(
             info,
             board,
             attack_info,
             mask,
+            uci_state,
+            zobrist_info,
             -beta,
             -beta + 1,
             depth - 1 - 2,
         );
         info.ply -= 1;
-        // Repetition stuff
         *board = clone;
-        // UCI stuff
+        // When timer runs out, return 0
+        if uci_state.stop {
+            return 0;
+        }
         // Fail hard; beta-cutoffs
         if score >= beta {
             return beta;
@@ -199,7 +232,7 @@ fn negamax(
         info.ply += 1;
         // Repetition stuff
         // Make sure that every move from this point on is legal
-        if !moves::make(board, attack_info, *mv, MoveFlag::AllMoves) {
+        if !moves::make(board, attack_info, zobrist_info, *mv, MoveFlag::AllMoves) {
             info.ply -= 1;
             // Repetition stuff
             continue;
@@ -208,7 +241,17 @@ fn negamax(
 
         // Full depth search
         if move_searched == 0 {
-            score = -negamax(info, board, attack_info, mask, -beta, -alpha, depth - 1);
+            score = -negamax(
+                info,
+                board,
+                attack_info,
+                mask,
+                uci_state,
+                zobrist_info,
+                -beta,
+                -alpha,
+                depth - 1,
+            );
         } else {
             // Late move reduction (LMR)
             if move_searched >= FULL_DEPTH_MOVES
@@ -222,6 +265,8 @@ fn negamax(
                     board,
                     attack_info,
                     mask,
+                    uci_state,
+                    zobrist_info,
                     -alpha - 1,
                     -alpha,
                     depth - 2,
@@ -238,25 +283,41 @@ fn negamax(
                     board,
                     attack_info,
                     mask,
+                    uci_state,
+                    zobrist_info,
                     -alpha - 1,
                     -alpha,
                     depth - 1,
                 );
                 // If LMR fails, re-search at full depth and full score bandwidth
                 if (score > alpha) && (score < beta) {
-                    score = -negamax(info, board, attack_info, mask, -beta, -alpha, depth - 1);
+                    score = -negamax(
+                        info,
+                        board,
+                        attack_info,
+                        mask,
+                        uci_state,
+                        zobrist_info,
+                        -beta,
+                        -alpha,
+                        depth - 1,
+                    );
                 }
             }
         }
         info.ply -= 1;
         // Repetition stuff
         *board = clone;
-        // UCI stuff
+        // When timer runs out, return 0
+        if uci_state.stop {
+            return 0;
+        }
         move_searched += 1;
 
         // If a better move is found
         if score > alpha {
-            // Transposition stuff
+            // Switch flag to EXACT(PV node) from ALPHA (fail-low node)
+            tt_flag = TTFlag::Exact;
             if !mv.is_capture() {
                 info.history[mv.piece() as usize][mv.target() as usize] += depth;
             }
@@ -267,7 +328,7 @@ fn negamax(
             // Write PV move
             info.pv_table[info.ply as usize][info.ply as usize] = *mv;
 
-	    // Copy PV from following plies
+            // Copy PV from following plies
             for next_ply in (info.ply + 1)..info.pv_len[info.ply as usize + 1] {
                 info.pv_table[info.ply as usize][next_ply as usize] =
                     info.pv_table[info.ply as usize + 1][next_ply as usize];
@@ -277,7 +338,7 @@ fn negamax(
 
             // Fail hard; beta-cutoff
             if score >= beta {
-                // Transposition stuff
+                info.tt.write_entry(&board, depth, beta, TTFlag::Beta, info.ply);
                 if !mv.is_capture() {
                     info.killer[1][info.ply as usize] = info.killer[0][info.ply as usize];
                     info.killer[0][info.ply as usize] = *mv;
@@ -299,7 +360,7 @@ fn negamax(
             return 0;
         }
     }
-    // Transposition stuff
+    info.tt.write_entry(&board, depth, alpha, tt_flag, info.ply);
     // Node (move) that fails low
     alpha
 }
@@ -309,12 +370,14 @@ pub fn quiescence(
     board: &mut Board,
     attack_info: &AttackInfo,
     mask: &EvalMasks,
+    uci_state: &mut UCIState,
+    zobrist_info: &ZobristInfo,
     mut alpha: i32,
-    mut beta: i32,
+    beta: i32,
 ) -> i32 {
     // Every 2047 nodes, communicate with UCI
     if (info.nodes & 2047) == 0 {
-        // UCI stuff
+        uci_state.check_up();
     }
     info.nodes += 1;
     // Escape condition
@@ -344,16 +407,19 @@ pub fn quiescence(
         info.ply += 1;
         // Repetition stuff
         // Make sure that every move from this point on is legal
-        if !moves::make(board, attack_info, *mv, MoveFlag::CapturesOnly) {
+        if !moves::make(board, attack_info, zobrist_info, *mv, MoveFlag::CapturesOnly) {
             info.ply -= 1;
             // Repetition stuff
             continue;
         }
-        let score = -quiescence(info, board, attack_info, mask, -beta, -alpha);
+        let score = -quiescence(info, board, attack_info, mask, uci_state, zobrist_info, -beta, -alpha);
         info.ply -= 1;
         // Repetition stuff
         *board = clone;
-        // UCI stuff
+        // When timer runs out, return 0
+        if uci_state.stop {
+            return 0;
+        }
         if score > alpha {
             // PV node
             alpha = score;
@@ -371,14 +437,14 @@ fn score_move(info: &mut SearchInfo, board: &mut Board, mv: Move) -> u32 {
         // Check if move on current ply is a PV move
         if info.pv_table[0][info.ply as usize] == mv {
             info.score_pv = false;
-            return 20000;
+            // Give PV move the highest score so as to search it first
+            return 20_000;
         }
     }
 
     if mv.is_capture() {
         // Set to pawn by default; for enpassant
         let mut captured = Piece::LP as usize;
-        let target_sq = mv.target() as usize;
         // Get opponent piece start and end range
         let (start, end) = if board.state.side == PieceColor::Light {
             (Piece::DP as usize, Piece::DK as usize)
@@ -386,7 +452,7 @@ fn score_move(info: &mut SearchInfo, board: &mut Board, mv: Move) -> u32 {
             (Piece::LP as usize, Piece::LK as usize)
         };
         for i in start..=end {
-            if board.pos.piece[i].get(target_sq) {
+            if board.pos.piece[i].get(mv.target() as usize) {
                 captured = i;
                 break;
             }
@@ -397,7 +463,7 @@ fn score_move(info: &mut SearchInfo, board: &mut Board, mv: Move) -> u32 {
         // Score the best killer move
         if info.killer[0][info.ply as usize] == mv {
             return 9000;
-        } else if info.killer[0][info.ply as usize] == mv {
+        } else if info.killer[1][info.ply as usize] == mv {
             return 8000;
         } else {
             return info.history[mv.piece() as usize][mv.target() as usize];
@@ -407,22 +473,22 @@ fn score_move(info: &mut SearchInfo, board: &mut Board, mv: Move) -> u32 {
 
 fn sort_moves(info: &mut SearchInfo, board: &mut Board, ml: &mut MoveList) {
     let mut move_score_list: Vec<u32> = vec![];
-    for i in 0..ml.moves.len() {
-        move_score_list.push(score_move(info, board, ml.moves[i]));
+    for mv in &ml.moves {
+        move_score_list.push(score_move(info, board, *mv));
     }
 
     // Sort moves and their scores in 'descending' order
-    for i in 0..ml.moves.len() {
-        for k in (i + 1)..move_score_list.len() {
-            if move_score_list[i] < move_score_list[k] {
+    for curr in 0..ml.moves.len() {
+        for next in (curr + 1)..ml.moves.len() {
+            if move_score_list[curr] < move_score_list[next] {
                 // Swap scores
-                let temp = move_score_list[i];
-                move_score_list[i] = move_score_list[k];
-                move_score_list[k] = temp;
+                let temp = move_score_list[curr];
+                move_score_list[curr] = move_score_list[next];
+                move_score_list[next] = temp;
                 // Swap moves
-                let temp = ml.moves[i];
-                ml.moves[i] = ml.moves[k];
-                ml.moves[k] = temp;
+                let temp = ml.moves[curr];
+                ml.moves[curr] = ml.moves[next];
+                ml.moves[next] = temp;
             }
         }
     }
