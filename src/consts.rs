@@ -2,28 +2,44 @@
 macro_rules! SQ {
     ($row: expr, $col: expr) => {
         /* '8' is used here because chess game always is an 8x8 game */
+<<<<<<< HEAD
         ($row * 8) + $col
+=======
+        (($row * 8) + $col)
+>>>>>>> eb57ea2 (Completed version 1.0 of the engine)
     };
 }
 
 #[macro_export]
 macro_rules! ROW {
     ($sq: expr) => {
+<<<<<<< HEAD
         $sq >> 3
+=======
+        ($sq >> 3)
+>>>>>>> eb57ea2 (Completed version 1.0 of the engine)
     };
 }
 
 #[macro_export]
 macro_rules! COL {
     ($sq: expr) => {
+<<<<<<< HEAD
         $sq & 7
+=======
+        ($sq & 7)
+>>>>>>> eb57ea2 (Completed version 1.0 of the engine)
     };
 }
 
 #[macro_export]
 macro_rules! FLIP_SQ {
     ($sq: expr) => {
+<<<<<<< HEAD
         $sq ^ 56
+=======
+        ($sq ^ 56)
+>>>>>>> eb57ea2 (Completed version 1.0 of the engine)
     };
 }
 

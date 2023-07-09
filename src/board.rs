@@ -2,8 +2,13 @@ use crate::attack::AttackInfo;
 use crate::bb::{BBUtil, BB};
 use crate::consts::{Piece, PieceColor, Sq};
 use crate::fen;
+<<<<<<< HEAD
 use crate::SQ;
 use crate::zobrist::ZobristInfo;
+=======
+use crate::zobrist::ZobristInfo;
+use crate::SQ;
+>>>>>>> eb57ea2 (Completed version 1.0 of the engine)
 
 #[derive(Clone)]
 pub struct Position {
@@ -224,4 +229,45 @@ pub fn sq_attacked(pos: &Position, attack_info: &AttackInfo, sq: Sq, side: Piece
         return true;
     }
     return false;
+<<<<<<< HEAD
 }
+=======
+}
+
+/// `side` refers to the attacking side
+pub fn print_attacked_sqs(board: &Board, attack_info: &AttackInfo, side: PieceColor) {
+    for r in 0..8 {
+        for f in 0..8 {
+            let sq = SQ!(r, f);
+            if f == 0 {
+                print!("  {} ", 8 - r);
+            }
+            print!(
+                " {}",
+                if sq_attacked(&board.pos, attack_info, Sq::from_num(sq), side) {
+                    '1'
+                } else {
+                    '.'
+                }
+            );
+        }
+        println!();
+    }
+    println!("     - - - - - - - -");
+    println!("     a b c d e f g h\n");
+}
+
+pub fn in_check(board: &Board, attack_info: &AttackInfo, checked_by: PieceColor) -> bool {
+    let king_type = if checked_by == PieceColor::Light {
+        Piece::DK
+    } else {
+        Piece::LK
+    } as usize;
+    sq_attacked(
+        &board.pos,
+        attack_info,
+        Sq::from_num(board.pos.piece[king_type].lsb()),
+        checked_by,
+    )
+}
+>>>>>>> eb57ea2 (Completed version 1.0 of the engine)

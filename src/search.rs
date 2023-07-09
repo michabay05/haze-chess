@@ -6,12 +6,20 @@ use crate::eval::{self, EvalMasks};
 use crate::move_gen::{self, MoveList};
 use crate::moves::{self, Move, MoveFlag, MoveUtil};
 use crate::tt::{HashTT, TTFlag};
+<<<<<<< HEAD
 use crate::uci::UCIState;
+=======
+use crate::uci::{self, UCIState};
+>>>>>>> eb57ea2 (Completed version 1.0 of the engine)
 use crate::zobrist::{ZobristInfo, self, ZobristAction};
 
 const FULL_DEPTH_MOVES: u32 = 4;
 const REDUCTION_LIMIT: u32 = 3;
+<<<<<<< HEAD
 pub const MAX_PLY: usize = 64;
+=======
+pub const MAX_SEARCH_PLY: usize = 64;
+>>>>>>> eb57ea2 (Completed version 1.0 of the engine)
 
 // Mating score bounds
 // [-INFINITY, -MATE_VALUE ... -MATE_SCORE, ... SCORE ... MATE_SCORE ... MATE_VALUE, INFINITY]
@@ -36,10 +44,17 @@ pub struct SearchInfo {
     pub follow_pv: bool,
     pub score_pv: bool,
     // 'Quiet' moves that cause a beta-cutoffs
+<<<<<<< HEAD
     pub killer: [[Move; MAX_PLY]; 2], // [id][ply]
     pub history: [[Move; 64]; 12],    // [piece][sq]
     pub pv_len: [u32; MAX_PLY],
     pub pv_table: [[u32; MAX_PLY]; MAX_PLY],
+=======
+    pub killer: [[Move; MAX_SEARCH_PLY]; 2], // [id][ply]
+    pub history: [[Move; 64]; 12],    // [piece][sq]
+    pub pv_len: [u32; MAX_SEARCH_PLY],
+    pub pv_table: [[u32; MAX_SEARCH_PLY]; MAX_SEARCH_PLY],
+>>>>>>> eb57ea2 (Completed version 1.0 of the engine)
     pub tt: HashTT,
 }
 
@@ -50,10 +65,17 @@ impl SearchInfo {
             nodes: 0,
             follow_pv: false,
             score_pv: false,
+<<<<<<< HEAD
             killer: [[0; MAX_PLY]; 2],
             history: [[0; 64]; 12],
             pv_len: [0; MAX_PLY],
             pv_table: [[0; MAX_PLY]; MAX_PLY],
+=======
+            killer: [[0; MAX_SEARCH_PLY]; 2],
+            history: [[0; 64]; 12],
+            pv_len: [0; MAX_SEARCH_PLY],
+            pv_table: [[0; MAX_SEARCH_PLY]; MAX_SEARCH_PLY],
+>>>>>>> eb57ea2 (Completed version 1.0 of the engine)
             tt: HashTT::new(),
         }
     }
@@ -72,6 +94,10 @@ pub fn search(
     uci_state.stop = false;
     let mut alpha = -INFINITY;
     let mut beta = INFINITY;
+<<<<<<< HEAD
+=======
+    let start_time = uci::get_curr_time();
+>>>>>>> eb57ea2 (Completed version 1.0 of the engine)
 
     let mut score;
     for current_depth in 1..=depth {
@@ -101,6 +127,7 @@ pub fn search(
         alpha = score - 50;
         beta = score + 50;
 
+<<<<<<< HEAD
         if info.pv_len[0] != 0 {
             let (cp_score, cp_str) = if score > -MATE_VALUE && score < -MATE_SCORE {
                 (-(score + MATE_VALUE) / 2 - 1, "mate")
@@ -114,6 +141,22 @@ pub fn search(
                 cp_str, cp_score, current_depth, info.nodes
             );
             // print!("info score {} {} depth {} nodes {} time {}  pv ", cp_str, cp_score, current_depth, info.nodes, info.time);
+=======
+        let time_diff = uci::get_curr_time() - start_time;
+
+        if info.pv_len[0] != 0 {
+            let (cp_str, cp_score) = if score > -MATE_VALUE && score < -MATE_SCORE {
+                ("mate", (-(score + MATE_VALUE) / 2) - 1)
+            } else if score > MATE_VALUE && score < MATE_SCORE {
+                ("mate", ((MATE_VALUE - score) / 2) + 1)
+            } else {
+                ("cp", score)
+            };
+            print!(
+                "info score {} {} depth {} nodes {} time {} pv ",
+                cp_str, cp_score, current_depth, info.nodes, time_diff
+            );
+>>>>>>> eb57ea2 (Completed version 1.0 of the engine)
             // Print principal variation
             for i in 0..(info.pv_len[0] as usize) {
                 print!("{} ", info.pv_table[0][i].to_str().trim());
@@ -124,6 +167,12 @@ pub fn search(
     println!("bestmove {}", info.pv_table[0][0].to_str().trim());
 }
 
+<<<<<<< HEAD
+=======
+// Check up on UCI once for every 2047 nodes searched
+const CHECK_UP_NODES: u32 = 2047;
+
+>>>>>>> eb57ea2 (Completed version 1.0 of the engine)
 fn negamax(
     info: &mut SearchInfo,
     board: &mut Board,
@@ -149,8 +198,13 @@ fn negamax(
         return hash_score.unwrap();
     }
 
+<<<<<<< HEAD
     // Every 2047 nodes, communicate with UCI
     if (info.nodes & 2047) == 0 {
+=======
+    // Communicate with UCI every so often
+    if (info.nodes & CHECK_UP_NODES) == 0 {
+>>>>>>> eb57ea2 (Completed version 1.0 of the engine)
         uci_state.check_up();
     }
 
@@ -159,13 +213,18 @@ fn negamax(
         return quiescence(info, board, attack_info, mask, uci_state, zobrist_info, alpha, beta);
     }
     // Exit if ply > max ply; ply should be <= 63
+<<<<<<< HEAD
     if info.ply > (MAX_PLY - 1) as u32 {
+=======
+    if info.ply > (MAX_SEARCH_PLY - 1) as u32 {
+>>>>>>> eb57ea2 (Completed version 1.0 of the engine)
         return eval::evaluate(&board.pos, board.state.side, attack_info, mask);
     }
     // Increment nodes
     info.nodes += 1;
 
     // Check extension
+<<<<<<< HEAD
     let king_type = if board.state.side == PieceColor::Light {
         Piece::LK
     } else {
@@ -180,11 +239,20 @@ fn negamax(
 
     if is_in_check {
         depth += 1
+=======
+    let in_check =  board::in_check(board, attack_info, board.state.xside);
+    if in_check {
+        depth += 1;
+>>>>>>> eb57ea2 (Completed version 1.0 of the engine)
     }
     let mut legal_move_count = 0;
 
     // NULL move pruning
+<<<<<<< HEAD
     if depth >= 3 && !is_in_check && info.ply != 0 {
+=======
+    if depth >= 3 && !in_check && info.ply != 0 {
+>>>>>>> eb57ea2 (Completed version 1.0 of the engine)
         let clone = board.clone();
         info.ply += 1;
         // Repetition stuff
@@ -256,7 +324,11 @@ fn negamax(
             // Late move reduction (LMR)
             if move_searched >= FULL_DEPTH_MOVES
                 && depth >= REDUCTION_LIMIT
+<<<<<<< HEAD
                 && !is_in_check
+=======
+                && !in_check
+>>>>>>> eb57ea2 (Completed version 1.0 of the engine)
                 && mv.promoted().is_none()
                 && !mv.is_capture()
             {
@@ -350,7 +422,11 @@ fn negamax(
     }
     if legal_move_count == 0 {
         // Possible checkmate or stalemate
+<<<<<<< HEAD
         if is_in_check {
+=======
+        if in_check {
+>>>>>>> eb57ea2 (Completed version 1.0 of the engine)
             // Mating score
             // if 49000 is returned, mate is on the board
             // if not, there are ply number of moves before mate is on the board
@@ -375,15 +451,27 @@ pub fn quiescence(
     mut alpha: i32,
     beta: i32,
 ) -> i32 {
+<<<<<<< HEAD
     // Every 2047 nodes, communicate with UCI
     if (info.nodes & 2047) == 0 {
         uci_state.check_up();
     }
+=======
+    // Communicate with UCI every so often
+    if (info.nodes & CHECK_UP_NODES) == 0 {
+        uci_state.check_up();
+    }
+
+>>>>>>> eb57ea2 (Completed version 1.0 of the engine)
     info.nodes += 1;
     // Escape condition
     let eval = eval::evaluate(&board.pos, board.state.side, attack_info, mask);
     // Exit if ply > max ply; ply should be <= 63
+<<<<<<< HEAD
     if info.ply > MAX_PLY as u32 - 1 {
+=======
+    if info.ply > MAX_SEARCH_PLY as u32 - 1 {
+>>>>>>> eb57ea2 (Completed version 1.0 of the engine)
         return eval;
     }
 

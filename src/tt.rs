@@ -10,6 +10,7 @@ pub enum TTFlag {
 
 #[derive(Copy, Clone, Default)]
 pub struct TT {
+<<<<<<< HEAD
     pub key: u64,
     pub lock: u64,
     pub score: i32,
@@ -18,6 +19,20 @@ pub struct TT {
 }
 
 const HASH_MB: usize = 10;
+=======
+    // Position identifiers
+    pub key: u64,
+    pub lock: u64,
+    // Search score of the current position
+    pub score: i32,
+    // Current search depth
+    pub depth: u32,
+    // (Fail-low, fail-high, PV)
+    pub flag: TTFlag,
+}
+
+const HASH_MB: usize = 64;
+>>>>>>> eb57ea2 (Completed version 1.0 of the engine)
 const HASH_SIZE: usize = 0x100000 * HASH_MB;
 const HASH_ENTRIES: usize = HASH_SIZE / std::mem::size_of::<TT>();
 
@@ -32,7 +47,11 @@ fn get_tt_ind(key: u64) -> usize {
 impl HashTT {
     pub fn new() -> Self {
         let mut this = Self {
+<<<<<<< HEAD
             table: Vec::new(),
+=======
+            table: vec![],
+>>>>>>> eb57ea2 (Completed version 1.0 of the engine)
         };
         // Initialize the vec with all the values
         for _ in 0..HASH_ENTRIES {
