@@ -294,18 +294,6 @@ pub fn make(
                 main,
             );
         }
-<<<<<<< HEAD
-        zobrist::update(zobrist_info, ZobristAction::Castling, main);
-
-        main.state.castling &= CASTLING_RIGHTS[source] as u8;
-        main.state.castling &= CASTLING_RIGHTS[target] as u8;
-
-        zobrist::update(zobrist_info, ZobristAction::Castling, main);
-
-        main.pos.update_units();
-        main.state.change_side();
-
-=======
 
         zobrist::update(zobrist_info, ZobristAction::Castling, main);
         main.state.castling &= CASTLING_RIGHTS[source] as u8;
@@ -315,7 +303,6 @@ pub fn make(
         main.pos.update_units();
 
         main.state.change_side();
->>>>>>> eb57ea2 (Completed version 1.0 of the engine)
         zobrist::update(
             zobrist_info,
             ZobristAction::ChangeColor,
@@ -323,10 +310,6 @@ pub fn make(
         );
 
         /* ============= FOR DEBUG PURPOSES ONLY ===============
-<<<<<<< HEAD
-        ============= FOR DEBUG PURPOSES ONLY =============== */
-=======
->>>>>>> eb57ea2 (Completed version 1.0 of the engine)
         let key_from_scratch = zobrist::gen_board_key(&zobrist_info.key, &main);
         let lock_from_scratch = zobrist::gen_board_lock(&zobrist_info.lock, &main);
         assert!(
@@ -341,32 +324,13 @@ pub fn make(
             main.state.lock,
             lock_from_scratch
         );
-<<<<<<< HEAD
-
-        let king_type = if main.state.side == PieceColor::Light {
-            Piece::DK
-        } else {
-            Piece::LK
-        } as usize;
-        if board::sq_attacked(
-            &main.pos,
-            attack_info,
-            Sq::from_num(main.pos.piece[king_type].lsb()),
-            main.state.side,
-        ) {
-=======
          ============= FOR DEBUG PURPOSES ONLY =============== */
         if board::in_check(&main, attack_info, main.state.side) {
->>>>>>> eb57ea2 (Completed version 1.0 of the engine)
             *main = clone;
             return false;
         } else {
             // Increment full moves
-<<<<<<< HEAD
-            if main.state.side == PieceColor::Light {
-=======
             if main.state.side == PieceColor::Dark {
->>>>>>> eb57ea2 (Completed version 1.0 of the engine)
                 main.state.full_moves += 1;
             }
             return true;

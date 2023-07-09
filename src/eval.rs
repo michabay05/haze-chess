@@ -2,12 +2,7 @@ use crate::attack::AttackInfo;
 use crate::bb::{BBUtil, BB};
 use crate::board::Position;
 use crate::consts::{Piece, PieceColor, Sq};
-<<<<<<< HEAD
-use crate::eval_consts::*;
-use crate::{COL, FLIP_SQ, ROW, SQ};
-=======
 use crate::{FLIP_SQ, ROW, SQ};
->>>>>>> eb57ea2 (Completed version 1.0 of the engine)
 
 #[derive(Debug)]
 enum Phase {
@@ -17,59 +12,36 @@ enum Phase {
 }
 
 pub struct EvalMasks {
-<<<<<<< HEAD
-    pub rank: [BB; 8],
-    pub file: [BB; 8],
-    pub isolated: [BB; 8],
-=======
     pub rank: [BB; 64],
     pub file: [BB; 64],
     pub isolated: [BB; 64],
->>>>>>> eb57ea2 (Completed version 1.0 of the engine)
     pub passed: [[BB; 64]; 2],
 }
 
 impl EvalMasks {
     pub fn new() -> Self {
         Self {
-<<<<<<< HEAD
-            rank: [0; 8],
-            file: [0; 8],
-            isolated: [0; 8],
-=======
             rank: [0; 64],
             file: [0; 64],
             isolated: [0; 64],
->>>>>>> eb57ea2 (Completed version 1.0 of the engine)
             passed: [[0; 64]; 2],
         }
     }
 
     pub fn init(&mut self) {
-<<<<<<< HEAD
-        for i in 0..8i32 {
-            self.rank[i as usize] |= set_file_and_rank(i, -1);
-            self.file[i as usize] |= set_file_and_rank(-1, i);
-=======
         for r in 0..8i32 {
             for f in 0..8i32 {
                 let sq = SQ!(r, f) as usize;
                 self.rank[sq] |= set_file_and_rank(r, -1);
                 self.file[sq] |= set_file_and_rank(-1, f);
             }
->>>>>>> eb57ea2 (Completed version 1.0 of the engine)
         }
 
         for r in 0..8i32 {
             for f in 0..8i32 {
                 let sq = SQ!(r, f) as usize;
-<<<<<<< HEAD
-                self.isolated[f as usize] |= set_file_and_rank(-1, f - 1);
-                self.isolated[f as usize] |= set_file_and_rank(-1, f + 1);
-=======
                 self.isolated[sq] |= set_file_and_rank(-1, f - 1);
                 self.isolated[sq] |= set_file_and_rank(-1, f + 1);
->>>>>>> eb57ea2 (Completed version 1.0 of the engine)
 
                 self.passed[PieceColor::Light as usize][sq] |= set_file_and_rank(-1, f - 1);
                 self.passed[PieceColor::Light as usize][sq] |= set_file_and_rank(-1, f);
@@ -107,13 +79,6 @@ fn set_file_and_rank(rank: i32, file: i32) -> BB {
 fn get_phase_score(pos: &Position) -> i32 {
     let mut white_piece_score = 0;
     let mut black_piece_score = 0;
-<<<<<<< HEAD
-    for piece in 1..=4 {
-        white_piece_score +=
-            pos.piece[piece].count_ones() as i32 * MATERIAL_SCORES[Phase::Opening as usize][piece];
-        black_piece_score += pos.piece[piece + 6].count_ones() as i32
-            * -MATERIAL_SCORES[Phase::Opening as usize][piece + 6];
-=======
     for piece in (Piece::LN as usize)..=(Piece::LQ as usize) {
         white_piece_score +=
             pos.piece[piece].count_ones() as i32 * MATERIAL_SCORES[Phase::Opening as usize][piece];
@@ -121,7 +86,6 @@ fn get_phase_score(pos: &Position) -> i32 {
     for piece in (Piece::DN as usize)..=(Piece::DQ as usize) {
         black_piece_score += pos.piece[piece].count_ones() as i32
             * -MATERIAL_SCORES[Phase::Opening as usize][piece];
->>>>>>> eb57ea2 (Completed version 1.0 of the engine)
     }
     white_piece_score + black_piece_score
 }
@@ -155,30 +119,6 @@ pub fn evaluate(
             opening += MATERIAL_SCORES[Phase::Opening as usize][piece];
             endgame += MATERIAL_SCORES[Phase::Endgame as usize][piece];
 
-<<<<<<< HEAD
-            // add_positional_scores(sq, &mut opening, &mut endgame);
-            // opening += POSITIONAL_SCORES[Phase::Opening as usize][piece % 6][sq];
-            // endgame += POSITIONAL_SCORES[Phase::Endgame as usize][piece % 6][sq];
-            if let Some(val) = Piece::from_num(piece) {
-                match val {
-                    Piece::LP | Piece::LN | Piece::LB | Piece::LR | Piece::LQ | Piece::LK => {
-                        opening += POSITIONAL_SCORES[Phase::Opening as usize][(val as usize) % 6][sq];
-                        endgame += POSITIONAL_SCORES[Phase::Endgame as usize][(val as usize) % 6][sq];
-
-                        let (light_opening, light_endgame) =
-                            eval_light_pieces(val, pos, attack_info, mask, sq);
-                        opening += light_opening;
-                        endgame += light_endgame;
-                    }
-                    Piece::DP | Piece::DN | Piece::DB | Piece::DR | Piece::DQ | Piece::DK => {
-                        opening -= POSITIONAL_SCORES[Phase::Opening as usize][(val as usize) % 6][sq];
-                        endgame -= POSITIONAL_SCORES[Phase::Endgame as usize][(val as usize) % 6][sq];
-
-                        let (dark_opening, dark_endgame) =
-                            eval_dark_pieces(val, pos, attack_info, mask, sq);
-                        opening += dark_opening;
-                        endgame += dark_endgame;
-=======
             if let Some(p) = Piece::from_num(piece) {
                 match p {
                     Piece::LP | Piece::LN | Piece::LB | Piece::LR | Piece::LQ | Piece::LK => {
@@ -212,7 +152,6 @@ pub fn evaluate(
                             &mut opening,
                             &mut endgame,
                         );
->>>>>>> eb57ea2 (Completed version 1.0 of the engine)
                     }
                 }
             }
@@ -241,26 +180,6 @@ fn eval_light_pieces(
     attack_info: &AttackInfo,
     mask: &EvalMasks,
     sq: usize,
-<<<<<<< HEAD
-) -> (i32, i32) {
-    let mut opening = 0;
-    let mut endgame = 0;
-    match white_piece {
-        Piece::LP => {
-            let num_of_doubled_pawns =
-                (pos.piece[Piece::LP as usize] & mask.file[COL!(sq)]).count_ones() as i32 - 1;
-            if num_of_doubled_pawns > 0 {
-                opening += num_of_doubled_pawns * DOUBLED_PAWN_PENALTY[Phase::Opening as usize];
-                endgame += num_of_doubled_pawns * DOUBLED_PAWN_PENALTY[Phase::Endgame as usize];
-            }
-            if (pos.piece[Piece::LP as usize] & mask.isolated[COL!(sq)]) == 0 {
-                opening += ISOLATED_PAWN_PENALTY[Phase::Opening as usize];
-                endgame += ISOLATED_PAWN_PENALTY[Phase::Endgame as usize];
-            }
-            if (pos.piece[Piece::DP as usize] & mask.passed[PieceColor::Light as usize][sq]) == 0 {
-                opening += PASSED_PAWN_BONUS[ROW!(sq)];
-                endgame += PASSED_PAWN_BONUS[ROW!(sq)];
-=======
     opening: &mut i32,
     endgame: &mut i32
 ) {
@@ -279,22 +198,10 @@ fn eval_light_pieces(
             if (pos.piece[Piece::DP as usize] & mask.passed[PieceColor::Light as usize][sq]) == 0 {
                 *opening += PASSED_PAWN_BONUS[7 - ROW!(sq)];
                 *endgame += PASSED_PAWN_BONUS[7 - ROW!(sq)];
->>>>>>> eb57ea2 (Completed version 1.0 of the engine)
             }
         }
 
         Piece::LB => {
-<<<<<<< HEAD
-            opening += (attack_info
-                .get_bishop_attack(Sq::from_num(sq), pos.units[PieceColor::Both as usize])
-                - BISHOP_UNIT as u64)
-                .count_ones() as i32
-                * BISHOP_MOBILITY_BONUS[Phase::Opening as usize];
-            endgame += (attack_info
-                .get_bishop_attack(Sq::from_num(sq), pos.units[PieceColor::Both as usize])
-                - BISHOP_UNIT as u64)
-                .count_ones() as i32
-=======
             *opening += (attack_info
                 .get_bishop_attack(Sq::from_num(sq), pos.units[PieceColor::Both as usize])
                 .count_ones() as i32
@@ -304,23 +211,10 @@ fn eval_light_pieces(
                 .get_bishop_attack(Sq::from_num(sq), pos.units[PieceColor::Both as usize])
                 .count_ones() as i32
                 - BISHOP_UNIT)
->>>>>>> eb57ea2 (Completed version 1.0 of the engine)
                 * BISHOP_MOBILITY_BONUS[Phase::Endgame as usize];
         }
 
         Piece::LR => {
-<<<<<<< HEAD
-            if (pos.piece[Piece::LP as usize] & mask.file[COL!(sq)]) == 0 {
-                opening += SEMI_OPEN_FILE_BONUS;
-                endgame += SEMI_OPEN_FILE_BONUS;
-            }
-            if ((pos.piece[Piece::LP as usize] | pos.piece[Piece::DP as usize])
-                & mask.file[COL!(sq)])
-                == 0
-            {
-                opening += OPEN_FILE_BONUS;
-                endgame += OPEN_FILE_BONUS;
-=======
             if (pos.piece[Piece::LP as usize] & mask.file[sq]) == 0 {
                 *opening += SEMI_OPEN_FILE_BONUS;
                 *endgame += SEMI_OPEN_FILE_BONUS;
@@ -330,22 +224,10 @@ fn eval_light_pieces(
             {
                 *opening += OPEN_FILE_BONUS;
                 *endgame += OPEN_FILE_BONUS;
->>>>>>> eb57ea2 (Completed version 1.0 of the engine)
             }
         }
 
         Piece::LQ => {
-<<<<<<< HEAD
-            opening += (attack_info
-                .get_queen_attack(Sq::from_num(sq), pos.units[PieceColor::Both as usize])
-                - QUEEN_UNIT as u64)
-                .count_ones() as i32
-                * QUEEN_MOBILITY_BONUS[Phase::Opening as usize];
-            endgame += (attack_info
-                .get_queen_attack(Sq::from_num(sq), pos.units[PieceColor::Both as usize])
-                - QUEEN_UNIT as u64)
-                .count_ones() as i32
-=======
             *opening += (attack_info
                 .get_queen_attack(Sq::from_num(sq), pos.units[PieceColor::Both as usize])
                 .count_ones() as i32
@@ -355,31 +237,10 @@ fn eval_light_pieces(
                 .get_queen_attack(Sq::from_num(sq), pos.units[PieceColor::Both as usize])
                 .count_ones() as i32
                 - QUEEN_UNIT)
->>>>>>> eb57ea2 (Completed version 1.0 of the engine)
                 * QUEEN_MOBILITY_BONUS[Phase::Endgame as usize];
         }
 
         Piece::LK => {
-<<<<<<< HEAD
-            if (pos.piece[Piece::LP as usize] & mask.file[COL!(sq)]) == 0 {
-                // Semi open file penalty
-                opening -= SEMI_OPEN_FILE_BONUS;
-                endgame -= SEMI_OPEN_FILE_BONUS;
-            }
-            if ((pos.piece[Piece::LP as usize] | pos.piece[Piece::DP as usize])
-                & mask.file[COL!(sq)])
-                == 0
-            {
-                // Open file penalty
-                opening -= OPEN_FILE_BONUS;
-                endgame -= OPEN_FILE_BONUS;
-            }
-            // King safety bonus
-            opening += (attack_info.king[sq] & pos.units[PieceColor::Light as usize]).count_ones()
-                as i32
-                * KING_SHIELD_BONUS;
-            endgame += (attack_info.king[sq] & pos.units[PieceColor::Light as usize]).count_ones()
-=======
             if (pos.piece[Piece::LP as usize] & mask.file[sq]) == 0 {
                 // Semi open file penalty
                 *opening -= SEMI_OPEN_FILE_BONUS;
@@ -397,17 +258,11 @@ fn eval_light_pieces(
                 as i32
                 * KING_SHIELD_BONUS;
             *endgame += (attack_info.king[sq] & pos.units[PieceColor::Light as usize]).count_ones()
->>>>>>> eb57ea2 (Completed version 1.0 of the engine)
                 as i32
                 * KING_SHIELD_BONUS;
         }
         _ => {}
-<<<<<<< HEAD
-    }
-    (opening, endgame)
-=======
     };
->>>>>>> eb57ea2 (Completed version 1.0 of the engine)
 }
 
 fn eval_dark_pieces(
@@ -416,26 +271,6 @@ fn eval_dark_pieces(
     attack_info: &AttackInfo,
     mask: &EvalMasks,
     sq: usize,
-<<<<<<< HEAD
-) -> (i32, i32) {
-    let mut opening = 0;
-    let mut endgame = 0;
-    match black_piece {
-        Piece::DP => {
-            let num_of_doubled_pawns =
-                (pos.piece[Piece::DP as usize] & mask.file[COL!(sq)]).count_ones() as i32 - 1;
-            if num_of_doubled_pawns > 0 {
-                opening -= num_of_doubled_pawns * DOUBLED_PAWN_PENALTY[Phase::Opening as usize];
-                endgame -= num_of_doubled_pawns * DOUBLED_PAWN_PENALTY[Phase::Endgame as usize];
-            }
-            if (pos.piece[Piece::DP as usize] & mask.isolated[COL!(sq)]) == 0 {
-                opening -= ISOLATED_PAWN_PENALTY[Phase::Opening as usize];
-                endgame -= ISOLATED_PAWN_PENALTY[Phase::Endgame as usize];
-            }
-            if (pos.piece[Piece::LP as usize] & mask.passed[PieceColor::Dark as usize][sq]) == 0 {
-                opening -= PASSED_PAWN_BONUS[ROW!(sq)];
-                endgame -= PASSED_PAWN_BONUS[ROW!(sq)];
-=======
     opening: &mut i32,
     endgame: &mut i32
 ) {
@@ -454,22 +289,10 @@ fn eval_dark_pieces(
             if (pos.piece[Piece::LP as usize] & mask.passed[PieceColor::Dark as usize][sq]) == 0 {
                 *opening -= PASSED_PAWN_BONUS[7 - ROW!(sq)];
                 *endgame -= PASSED_PAWN_BONUS[7 - ROW!(sq)];
->>>>>>> eb57ea2 (Completed version 1.0 of the engine)
             }
         }
 
         Piece::DB => {
-<<<<<<< HEAD
-            opening -= (attack_info
-                .get_bishop_attack(Sq::from_num(sq), pos.units[PieceColor::Both as usize])
-                - BISHOP_UNIT as u64)
-                .count_ones() as i32
-                * BISHOP_MOBILITY_BONUS[Phase::Opening as usize];
-            endgame -= (attack_info
-                .get_bishop_attack(Sq::from_num(sq), pos.units[PieceColor::Both as usize])
-                - BISHOP_UNIT as u64)
-                .count_ones() as i32
-=======
             *opening -= (attack_info
                 .get_bishop_attack(Sq::from_num(sq), pos.units[PieceColor::Both as usize])
                 .count_ones() as i32
@@ -479,23 +302,10 @@ fn eval_dark_pieces(
                 .get_bishop_attack(Sq::from_num(sq), pos.units[PieceColor::Both as usize])
                 .count_ones() as i32
                 - BISHOP_UNIT)
->>>>>>> eb57ea2 (Completed version 1.0 of the engine)
                 * BISHOP_MOBILITY_BONUS[Phase::Endgame as usize];
         }
 
         Piece::DR => {
-<<<<<<< HEAD
-            if (pos.piece[Piece::DP as usize] & mask.file[COL!(sq)]) == 0 {
-                opening -= SEMI_OPEN_FILE_BONUS;
-                endgame -= SEMI_OPEN_FILE_BONUS;
-            }
-            if ((pos.piece[Piece::LP as usize] | pos.piece[Piece::DP as usize])
-                & mask.file[COL!(sq)])
-                == 0
-            {
-                opening -= OPEN_FILE_BONUS;
-                endgame -= OPEN_FILE_BONUS;
-=======
             if (pos.piece[Piece::DP as usize] & mask.file[sq]) == 0 {
                 *opening -= SEMI_OPEN_FILE_BONUS;
                 *endgame -= SEMI_OPEN_FILE_BONUS;
@@ -505,22 +315,10 @@ fn eval_dark_pieces(
             {
                 *opening -= OPEN_FILE_BONUS;
                 *endgame -= OPEN_FILE_BONUS;
->>>>>>> eb57ea2 (Completed version 1.0 of the engine)
             }
         }
 
         Piece::DQ => {
-<<<<<<< HEAD
-            opening -= (attack_info
-                .get_queen_attack(Sq::from_num(sq), pos.units[PieceColor::Both as usize])
-                - QUEEN_UNIT as u64)
-                .count_ones() as i32
-                * QUEEN_MOBILITY_BONUS[Phase::Opening as usize];
-            endgame -= (attack_info
-                .get_queen_attack(Sq::from_num(sq), pos.units[PieceColor::Both as usize])
-                - QUEEN_UNIT as u64)
-                .count_ones() as i32
-=======
             *opening -= (attack_info
                 .get_queen_attack(Sq::from_num(sq), pos.units[PieceColor::Both as usize])
                 .count_ones() as i32
@@ -530,31 +328,10 @@ fn eval_dark_pieces(
                 .get_queen_attack(Sq::from_num(sq), pos.units[PieceColor::Both as usize])
                 .count_ones() as i32
                 - QUEEN_UNIT)
->>>>>>> eb57ea2 (Completed version 1.0 of the engine)
                 * QUEEN_MOBILITY_BONUS[Phase::Endgame as usize];
         }
 
         Piece::DK => {
-<<<<<<< HEAD
-            if (pos.piece[Piece::DP as usize] & mask.file[COL!(sq)]) == 0 {
-                // The semi open file bonus for the rook is used as a penalty for the king because the king isn't being shielded
-                opening += SEMI_OPEN_FILE_BONUS;
-                endgame += SEMI_OPEN_FILE_BONUS;
-            }
-            if ((pos.piece[Piece::LP as usize] | pos.piece[Piece::DP as usize])
-                & mask.file[COL!(sq)])
-                == 0
-            {
-                // The open file bonus for the rook is used as a penalty for the king because the king isn't being shielded
-                opening += OPEN_FILE_BONUS;
-                endgame += OPEN_FILE_BONUS;
-            }
-            // King safety bonus
-            opening -= (attack_info.king[sq] & pos.units[PieceColor::Dark as usize]).count_ones()
-                as i32
-                * KING_SHIELD_BONUS;
-            endgame -= (attack_info.king[sq] & pos.units[PieceColor::Dark as usize]).count_ones()
-=======
             if (pos.piece[Piece::DP as usize] & mask.file[sq]) == 0 {
                 // The semi open file bonus for the rook is used as a penalty for the king because the king isn't being shielded
                 *opening += SEMI_OPEN_FILE_BONUS;
@@ -572,16 +349,10 @@ fn eval_dark_pieces(
                 as i32
                 * KING_SHIELD_BONUS;
             *endgame -= (attack_info.king[sq] & pos.units[PieceColor::Dark as usize]).count_ones()
->>>>>>> eb57ea2 (Completed version 1.0 of the engine)
                 as i32
                 * KING_SHIELD_BONUS;
         }
         _ => {}
-<<<<<<< HEAD
-    }
-    (opening, endgame)
-}
-=======
     };
 }
 
@@ -708,4 +479,3 @@ pub const POSITIONAL_SCORES: [[[i32; 64]; 6]; 2] = [
         ],
     ],
 ];
->>>>>>> eb57ea2 (Completed version 1.0 of the engine)

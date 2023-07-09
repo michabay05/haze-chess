@@ -2,11 +2,7 @@
 
 use crate::bb::{BBUtil, BB};
 use crate::consts::{Direction, PieceColor, PieceType, Sq};
-<<<<<<< HEAD
-use crate::magic_consts::{BISHOP_MAGICS, ROOK_MAGICS};
-=======
 use crate::magics::{BISHOP_MAGICS, ROOK_MAGICS};
->>>>>>> eb57ea2 (Completed version 1.0 of the engine)
 use crate::{COL, ROW, SQ};
 
 // Total number of square a bishop can go to from a certain square

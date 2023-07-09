@@ -4,34 +4,12 @@ mod board;
 mod consts;
 mod engine;
 mod eval;
-<<<<<<< HEAD
-mod eval_consts;
 mod fen;
-mod magic_consts;
-=======
-mod fen;
->>>>>>> eb57ea2 (Completed version 1.0 of the engine)
 mod magics;
 mod move_gen;
 mod moves;
 mod perft;
 mod search;
-<<<<<<< HEAD
-mod uci;
-mod tt;
-mod zobrist;
-
-use std::io::{self, Write};
-use engine::Engine;
-
-fn main() {
-    let mut engine = engine::Engine::new();
-    run(&mut engine)
-}
-
-
-pub fn run(engine: &mut Engine) {
-=======
 mod tt;
 mod uci;
 mod zobrist;
@@ -63,7 +41,6 @@ fn main() {
 }
 
 pub fn start(engine: &mut Engine) {
->>>>>>> eb57ea2 (Completed version 1.0 of the engine)
     while !engine.uci_state.quit {
         let mut buf = String::new();
         let _ = io::stdout().flush();

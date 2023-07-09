@@ -2,13 +2,8 @@ use crate::attack::AttackInfo;
 use crate::bb::{BBUtil, BB};
 use crate::consts::{Piece, PieceColor, Sq};
 use crate::fen;
-<<<<<<< HEAD
-use crate::SQ;
-use crate::zobrist::ZobristInfo;
-=======
 use crate::zobrist::ZobristInfo;
 use crate::SQ;
->>>>>>> eb57ea2 (Completed version 1.0 of the engine)
 
 #[derive(Clone)]
 pub struct Position {
@@ -229,9 +224,6 @@ pub fn sq_attacked(pos: &Position, attack_info: &AttackInfo, sq: Sq, side: Piece
         return true;
     }
     return false;
-<<<<<<< HEAD
-}
-=======
 }
 
 /// `side` refers to the attacking side
@@ -270,4 +262,3 @@ pub fn in_check(board: &Board, attack_info: &AttackInfo, checked_by: PieceColor)
         checked_by,
     )
 }
->>>>>>> eb57ea2 (Completed version 1.0 of the engine)

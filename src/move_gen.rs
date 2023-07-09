@@ -42,21 +42,12 @@ pub fn generate(board: &Board, attack_info: &AttackInfo, ml: &mut MoveList) {
     generate_kings(board, attack_info, ml);
 }
 
-<<<<<<< HEAD
-const PROMOTED_PIECE_LIST: [[Piece; 4]; 2] = [
-    [Piece::LQ, Piece::LR, Piece::LB, Piece::LN],
-    [Piece::DQ, Piece::DR, Piece::DB, Piece::DN],
-];
-
-fn generate_pawns(board: &Board, attack_info: &AttackInfo, ml: &mut MoveList) {
-=======
 fn generate_pawns(board: &Board, attack_info: &AttackInfo, ml: &mut MoveList) {
     const PROMOTED_PIECE_LIST: [[Piece; 4]; 2] = [
         [Piece::LQ, Piece::LR, Piece::LB, Piece::LN],
         [Piece::DQ, Piece::DR, Piece::DB, Piece::DN],
     ];
 
->>>>>>> eb57ea2 (Completed version 1.0 of the engine)
     let mut bb_copy: BB;
     let mut attack_copy: BB;
     let promotion_start; // The first square of the promoting rank
@@ -64,27 +55,18 @@ fn generate_pawns(board: &Board, attack_info: &AttackInfo, ml: &mut MoveList) {
     let enemy_rank_start; // The first square of the current side's pawn starting square
     let direction: Direction;
     let piece: Piece;
-<<<<<<< HEAD
-    let is_white = board.state.side == PieceColor::Light;
-    if is_white {
-        piece = Piece::LP;
-=======
     let enemy_color: PieceColor;
     let is_white = board.state.side == PieceColor::Light;
     if is_white {
         piece = Piece::LP;
         enemy_color = PieceColor::Dark;
->>>>>>> eb57ea2 (Completed version 1.0 of the engine)
         promotion_start = Sq::A7;
         twosquarepush_start = Sq::A2;
         enemy_rank_start = Sq::A8;
         direction = Direction::SOUTH;
     } else {
         piece = Piece::DP;
-<<<<<<< HEAD
-=======
         enemy_color = PieceColor::Light;
->>>>>>> eb57ea2 (Completed version 1.0 of the engine)
         promotion_start = Sq::A2;
         twosquarepush_start = Sq::A7;
         enemy_rank_start = Sq::H1;
@@ -152,11 +134,7 @@ fn generate_pawns(board: &Board, attack_info: &AttackInfo, ml: &mut MoveList) {
         }
 
         attack_copy = attack_info.pawn[board.state.side as usize][source as usize]
-<<<<<<< HEAD
-            & board.pos.units[board.state.xside as usize];
-=======
             & board.pos.units[enemy_color as usize];
->>>>>>> eb57ea2 (Completed version 1.0 of the engine)
         while attack_copy > 0 {
             target = attack_copy.pop_lsb() as i32;
             if (source >= promotion_start as i32) && (source <= (promotion_start as i32 + 7)) {
@@ -426,20 +404,6 @@ fn gen_light_castling(board: &Board, attack_info: &AttackInfo, ml: &mut MoveList
                     .push(Move::from_str("e1g1", Piece::LK, false, false, false, true));
             }
         }
-<<<<<<< HEAD
-
-        if castling.get(CastlingType::WhiteQueenside as usize) {
-            if !board.pos.units[PieceColor::Both as usize].get(Sq::B1 as usize)
-                && !board.pos.units[PieceColor::Both as usize].get(Sq::C1 as usize)
-                && !board.pos.units[PieceColor::Both as usize].get(Sq::D1 as usize)
-            {
-                if !board::sq_attacked(&board.pos, attack_info, Sq::D1, PieceColor::Dark)
-                    && !board::sq_attacked(&board.pos, attack_info, Sq::E1, PieceColor::Dark)
-                {
-                    ml.moves
-                        .push(Move::from_str("e1c1", Piece::LK, false, false, false, true));
-                }
-=======
     }
 
     if castling.get(CastlingType::WhiteQueenside as usize) {
@@ -452,7 +416,6 @@ fn gen_light_castling(board: &Board, attack_info: &AttackInfo, ml: &mut MoveList
             {
                 ml.moves
                     .push(Move::from_str("e1c1", Piece::LK, false, false, false, true));
->>>>>>> eb57ea2 (Completed version 1.0 of the engine)
             }
         }
     }
@@ -468,23 +431,6 @@ fn gen_dark_castling(board: &Board, attack_info: &AttackInfo, ml: &mut MoveList)
                 && !board::sq_attacked(&board.pos, attack_info, Sq::F8, PieceColor::Light)
             {
                 ml.moves
-<<<<<<< HEAD
-                    .push(Move::from_str("e8g8", Piece::LK, false, false, false, true));
-            }
-        }
-
-        if castling.get(CastlingType::BlackQueenside as usize) {
-            if !board.pos.units[PieceColor::Both as usize].get(Sq::B8 as usize)
-                && !board.pos.units[PieceColor::Both as usize].get(Sq::C8 as usize)
-                && !board.pos.units[PieceColor::Both as usize].get(Sq::D8 as usize)
-            {
-                if !board::sq_attacked(&board.pos, attack_info, Sq::D8, PieceColor::Light)
-                    && !board::sq_attacked(&board.pos, attack_info, Sq::E8, PieceColor::Light)
-                {
-                    ml.moves
-                        .push(Move::from_str("e8c8", Piece::LK, false, false, false, true));
-                }
-=======
                     .push(Move::from_str("e8g8", Piece::DK, false, false, false, true));
             }
         }
@@ -500,7 +446,6 @@ fn gen_dark_castling(board: &Board, attack_info: &AttackInfo, ml: &mut MoveList)
             {
                 ml.moves
                     .push(Move::from_str("e8c8", Piece::DK, false, false, false, true));
->>>>>>> eb57ea2 (Completed version 1.0 of the engine)
             }
         }
     }
