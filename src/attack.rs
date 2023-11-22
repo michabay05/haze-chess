@@ -36,9 +36,9 @@ pub struct AttackInfo {
     pub knight: [BB; 64],
     pub king: [BB; 64],
     pub bishop_occ_mask: [BB; 64],
-    pub bishop_attack: [[BB; 512]; 64],
+    pub bishop_attack: Vec<Vec<BB>>,
     pub rook_occ_mask: [BB; 64],
-    pub rook_attack: [[BB; 4096]; 64],
+    pub rook_attack: Vec<Vec<BB>>,
 }
 
 impl AttackInfo {
@@ -48,9 +48,9 @@ impl AttackInfo {
             knight: [0; 64],
             king: [0; 64],
             bishop_occ_mask: [0; 64],
-            bishop_attack: [[0; 512]; 64],
+            bishop_attack: vec![vec![0; 512]; 64],
             rook_occ_mask: [0; 64],
-            rook_attack: [[0; 4096]; 64],
+            rook_attack: vec![vec![0; 4096]; 64],
         }
     }
 

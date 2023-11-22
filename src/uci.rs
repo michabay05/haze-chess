@@ -3,13 +3,12 @@ use crate::consts::{Piece, PieceColor, Sq};
 use crate::engine::Engine;
 use crate::fen::FEN_POSITIONS;
 use crate::move_gen::MoveList;
-use crate::{eval, VERSION};
-use crate::{
-    move_gen,
-    moves::{self, Move},
-    perft,
-    search::{self, MAX_SEARCH_PLY},
-};
+use crate::eval;
+use crate::VERSION;
+use crate::move_gen;
+use crate::moves::{self, Move};
+use crate::perft;
+use crate::search::{self, MAX_SEARCH_PLY};
 
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -73,36 +72,31 @@ impl UCIState {
 pub fn parse(engine: &mut Engine, input_str: &str) {
     let (first_arg, rest) = first_and_rest(input_str);
 
-    if first_arg == "quit" {
-        engine.uci_state.quit = true;
-    } else if first_arg == "stop" {
-        engine.uci_state.stop = true;
-    } else if first_arg == "ucinewgame" {
-        parse_position(engine, "startpos");
-    } else if first_arg == "uci" {
-        print_author_info();
-    } else if first_arg == "isready" {
-        println!("readyok");
-    } else if first_arg == "position" {
-        parse_position(engine, &rest);
-    } else if first_arg == "go" {
-        parse_go(engine, &rest);
-    } else if first_arg == "evalpos" {
-        let eval = eval::evaluate(
-            &engine.board.pos,
-            engine.board.state.side,
-            &engine.attack_info,
-            &engine.eval_mask,
-        );
-        println!("Current eval: {eval}");
-    } else if first_arg == "genmoves" {
-        let mut ml = MoveList::new();
-        move_gen::generate(&engine.board, &engine.attack_info, &mut ml);
-        ml.print();
-    } else if (first_arg == "display") || (first_arg == "d") {
-        engine.board.display();
-    } else if first_arg == "help" {
-        print_help();
+    match first_arg.as_str() {
+        "quit" | "exit" => engine.uci_state.quit = true,
+        "stop" => engine.uci_state.stop = true,
+        "ucinewgame" => parse_position(engine, "startpos"),
+        "uci" => print_author_info(),
+        "isready" => println!("readyok"),
+        "position" => parse_position(engine, &rest),
+        "go" => parse_go(engine, &rest),
+        "evalpos" => {
+            let eval = eval::evaluate(
+                &engine.board.pos,
+                engine.board.state.side,
+                &engine.attack_info,
+                &engine.eval_mask,
+            );
+            println!("Current eval: {eval}");
+        }
+        "genmoves" => {
+            let mut ml = MoveList::new();
+            move_gen::generate(&engine.board, &engine.attack_info, &mut ml);
+            ml.print();
+        }
+        "display" | "d" => engine.board.display(),
+        "help" => print_help(),
+        _ => {}
     }
 }
 
@@ -273,12 +267,10 @@ pub fn print_author_info() {
 
 fn print_help() {
     println!();
-    println!("              Command name               |         Description");
-    println!("-------------------------------------------------------------------------------------------------------");
+    println!("              Command name               |               Description");
+    println!("=========================================|=============================================================");
     println!("                  uci                    |    Prints engine info and 'uciok'");
-    println!(
-        "              isready                    |    Prints 'readyok' if the engine is ready"
-    );
+    println!("              isready                    |    Prints 'readyok' if the engine is ready");
     println!("    position startpos                    |    Set board to starting position");
     println!("    position startpos moves <move1> ...  |    Set board to starting position then playing following moves");
     println!("   position fen <FEN>                    |    Set board to a custom FEN");
@@ -286,9 +278,7 @@ fn print_help() {
     println!("     go depth <depth>                    |    Returns the best move after search for given amount of depth");
     println!("                 stop                    |    Stops engine from calculating further");
     println!("                 quit                    |    Exit the UCI mode\n");
-    println!(
-        "------------------------------------ EXTENSIONS ----------------------------------------"
-    );
+    println!("------------------------------------ EXTENSIONS ----------------------------------------");
     println!("              display                    |    Display board");
     println!("     go perft <depth>                    |    Calculate the total number of moves from a position for a given depth");
 }
