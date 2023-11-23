@@ -31,6 +31,7 @@ pub const ROOK_RELEVANT_BITS: [u32; 64] = [
     12, 11, 11, 11, 11, 11, 11, 12,
 ];
 
+#[derive(Clone)]
 pub struct AttackInfo {
     pub pawn: [[BB; 64]; 2],
     pub knight: [BB; 64],

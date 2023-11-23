@@ -10,6 +10,7 @@ mod move_gen;
 mod moves;
 mod perft;
 mod search;
+mod threads;
 mod tt;
 mod uci;
 mod zobrist;
@@ -23,11 +24,16 @@ const VERSION: &str = "1.0";
 fn main() {
     let mut engine = Engine::new();
     let mut buf = String::new();
+    let mut quit = false;
 
-    while !engine.uci_state.quit {
+    while !quit {
         let _ = io::stdout().flush();
         if let Ok(_) = io::stdin().read_line(&mut buf) {
-            uci::parse(&mut engine, buf.trim());
+            let buf = buf.trim();
+            match buf {
+                "quit" | "exit" => quit = true,
+                _ => uci::parse(&mut engine, buf),
+            }
         } else {
             eprintln!("[ERROR] Couldn't read input. Please try again!");
         }

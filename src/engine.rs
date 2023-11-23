@@ -5,13 +5,15 @@ use crate::search::SearchInfo;
 use crate::uci::UCIState;
 use crate::zobrist::ZobristInfo;
 
+use std::sync::{Arc, RwLock};
+
 pub struct Engine {
     pub attack_info: AttackInfo,
     pub board: Board,
     pub eval_mask: EvalMasks,
     pub search_info: SearchInfo,
     pub zobrist_info: ZobristInfo,
-    pub uci_state: UCIState,
+    pub uci_state: Arc<RwLock<UCIState>>,
 }
 
 impl Engine {
@@ -22,15 +24,13 @@ impl Engine {
             eval_mask: EvalMasks::new(),
             search_info: SearchInfo::new(),
             zobrist_info: ZobristInfo::new(),
-            uci_state: UCIState::new(),
+            uci_state: Arc::new(RwLock::new(UCIState::new())),
         };
-        this.init();
-        this
-    }
+        // Initialize attributes
+        this.attack_info.init();
+        this.eval_mask.init();
+        this.zobrist_info.init();
 
-    fn init(&mut self) {
-        self.attack_info.init();
-        self.eval_mask.init();
-        self.zobrist_info.init();
+        this
     }
 }

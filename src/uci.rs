@@ -1,22 +1,22 @@
 use crate::board::{self, Board};
 use crate::consts::{Piece, PieceColor, Sq};
 use crate::engine::Engine;
-use crate::fen::FEN_POSITIONS;
-use crate::move_gen::MoveList;
 use crate::eval;
-use crate::VERSION;
-use crate::move_gen;
+use crate::fen::FEN_POSITIONS;
 use crate::moves::{self, Move};
+use crate::move_gen::{self, MoveList};
 use crate::perft;
 use crate::search::{self, MAX_SEARCH_PLY};
+use crate::threads;
+use crate::VERSION;
 
 use std::time::{SystemTime, UNIX_EPOCH};
 
 pub struct UCIState {
     pub stop: bool,
-    pub quit: bool,
     pub is_infinite: bool,
     pub time_controlled: bool,
+    pub depth: u32,
 
     time_left: Option<u32>,
     increment: u32,
@@ -36,7 +36,6 @@ impl UCIState {
     pub fn new() -> Self {
         Self {
             stop: false,
-            quit: false,
             is_infinite: false,
             time_controlled: false,
 
@@ -46,6 +45,7 @@ impl UCIState {
             move_time: None,
             start_time: 0,
             stop_time: 0,
+            depth: 0,
         }
     }
 
@@ -64,7 +64,6 @@ impl UCIState {
         self.stop_time = 0;
 
         self.time_controlled = false;
-        self.quit = false;
         self.stop = false;
     }
 }
@@ -73,8 +72,10 @@ pub fn parse(engine: &mut Engine, input_str: &str) {
     let (first_arg, rest) = first_and_rest(input_str);
 
     match first_arg.as_str() {
-        "quit" | "exit" => engine.uci_state.quit = true,
-        "stop" => engine.uci_state.stop = true,
+        "stop" => {
+            let mut engine_state = engine.uci_state.write().unwrap();
+            engine_state.stop = true;
+        }
         "ucinewgame" => parse_position(engine, "startpos"),
         "uci" => print_author_info(),
         "isready" => println!("readyok"),
@@ -113,7 +114,9 @@ fn parse_position(engine: &mut Engine, args: &str) {
     if rest.find("moves").is_some() {
         parse_moves(engine, &rest);
     }
-    engine.search_info.tt.clear_table();
+    // engine.search_info.tt.clear_table();
+    let mut engine_tt = engine.search_info.tt.write().unwrap();
+    engine_tt.clear_table();
 }
 
 fn parse_moves(engine: &mut Engine, args: &str) {
@@ -181,56 +184,60 @@ fn parse_go(engine: &mut Engine, args: &str) {
         return;
     }
     handle_time(engine, args);
-    let depth = parse_param(&args, "depth").unwrap_or(search::MAX_SEARCH_PLY as u32);
-    let state = &mut engine.uci_state;
-    if state.move_time.is_some() {
-        state.time_left = state.move_time;
-        state.moves_to_go = 1;
-    }
-
-    // Example UCI command with time
-    // go depth 12 wtime 180000 btime 100000 binc 1000 winc 1000 movetime 1000 movestogo 40
-    // go movetime 1000
-    state.start_time = get_curr_time();
-    if state.time_left.is_some() {
-        state.time_controlled = true;
-        state.time_left = Some(state.time_left.unwrap() / state.moves_to_go);
-        if state.time_left.unwrap() > 1500 {
-            state.time_left = Some(state.time_left.unwrap() - 50);
+    {
+        let mut state = engine.uci_state.write().unwrap();
+        let depth = parse_param(&args, "depth").unwrap_or(search::MAX_SEARCH_PLY as u32);
+        state.depth = depth;
+        if state.move_time.is_some() {
+            state.time_left = state.move_time;
+            state.moves_to_go = 1;
         }
-        state.stop_time = state.start_time + (state.time_left.unwrap() + state.increment) as u128;
-        if state.time_left.unwrap() < 1500 && state.increment != 0 && depth == MAX_SEARCH_PLY as u32
-        {
-            let mut a = state.increment as i32 - 50;
-            if a <= 0 {
-                a = 0;
+
+        // Example UCI command with time
+        // go depth 12 wtime 180000 btime 100000 binc 1000 winc 1000 movetime 1000 movestogo 40
+        // go movetime 1000
+        state.start_time = get_curr_time();
+        if let Some(tl) = state.time_left {
+            state.time_controlled = true;
+            state.time_left = Some(tl / state.moves_to_go);
+            if tl > 1500 {
+                state.time_left = Some(tl - 50);
             }
-            state.stop_time = state.start_time + a as u128;
+            state.stop_time = state.start_time + (tl + state.increment) as u128;
+            if tl < 1500 && state.increment != 0 && state.depth == MAX_SEARCH_PLY as u32
+            {
+                let mut a = state.increment as i32 - 50;
+                if a <= 0 {
+                    a = 0;
+                }
+                state.stop_time = state.start_time + a as u128;
+            }
         }
-    }
 
-    // Print debug info
-    println!(
-        "time: {},  start: {},  stop: {},  depth: {},  timeset: {}",
-        if state.time_left.is_some() {state.time_left.unwrap() as i32} else {-1},
-        state.start_time,
-        state.stop_time,
-        depth,
-        if state.time_controlled { '1' } else { '0' }
-    );
-    search::search(
-        &mut engine.search_info,
-        &mut engine.board,
-        &engine.attack_info,
-        &engine.eval_mask,
-        &mut engine.uci_state,
-        &engine.zobrist_info,
-        depth,
-    );
+        // Print debug info
+        println!(
+            "time: {},  start: {},  stop: {},  depth: {},  timecontrol: {}",
+            state.time_left.unwrap_or(0),
+            state.start_time,
+            state.stop_time,
+            depth,
+            if state.time_controlled { "yes" } else { "no" }
+        );
+        /* search::search(
+            &mut engine.search_info,
+            &mut engine.board,
+            &engine.attack_info,
+            &engine.eval_mask,
+            &mut engine.uci_state,
+            &engine.zobrist_info,
+            depth,
+        ); */
+        let _ = threads::launch_search_thread(&engine, depth);
+    }
 }
 
 fn handle_time(engine: &mut Engine, cmd: &str) {
-    let state = &mut engine.uci_state;
+    let mut state = engine.uci_state.write().unwrap();
     state.reset_time_control();
     if engine.board.state.side == PieceColor::Light {
         state.time_left = parse_param(cmd, "wtime");

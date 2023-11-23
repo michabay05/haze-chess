@@ -9,6 +9,8 @@ use crate::tt::{HashTT, TTFlag};
 use crate::uci::{self, UCIState};
 use crate::zobrist::{ZobristInfo, self, ZobristAction};
 
+use std::sync::{Arc, RwLock};
+
 const FULL_DEPTH_MOVES: u32 = 4;
 const REDUCTION_LIMIT: u32 = 3;
 pub const MAX_SEARCH_PLY: usize = 64;
@@ -28,6 +30,7 @@ const MVV_LVA: [[u32; 6]; 6] = [
     [100, 200, 300, 400, 500, 600],
 ];
 
+#[derive(Clone)]
 pub struct SearchInfo {
     // Half move counter
     pub ply: u32,
@@ -40,7 +43,7 @@ pub struct SearchInfo {
     pub history: [[Move; 64]; 12],    // [piece][sq]
     pub pv_len: [u32; MAX_SEARCH_PLY],
     pub pv_table: [[u32; MAX_SEARCH_PLY]; MAX_SEARCH_PLY],
-    pub tt: HashTT,
+    pub tt: Arc<RwLock<HashTT>>,
 }
 
 impl SearchInfo {
@@ -54,7 +57,7 @@ impl SearchInfo {
             history: [[0; 64]; 12],
             pv_len: [0; MAX_SEARCH_PLY],
             pv_table: [[0; MAX_SEARCH_PLY]; MAX_SEARCH_PLY],
-            tt: HashTT::new(),
+            tt: Arc::new(RwLock::new(HashTT::new())),
         }
     }
 }
@@ -64,20 +67,25 @@ pub fn search(
     board: &mut Board,
     attack_info: &AttackInfo,
     mask: &EvalMasks,
-    uci_state: &mut UCIState,
+    uci_state: &Arc<RwLock<UCIState>>,
     zobrist_info: &ZobristInfo,
     depth: u32,
 ) {
     *info = SearchInfo::new();
-    uci_state.stop = false;
+    {
+        let mut info_state = uci_state.write().unwrap();
+        info_state.stop = false;
+    }
     let mut alpha = -INFINITY;
     let mut beta = INFINITY;
     let start_time = uci::get_curr_time();
 
     let mut score;
-    for current_depth in 1..=depth {
-        if uci_state.stop {
-            break;
+    'deepen: for current_depth in 1..=depth {
+        {
+            if uci_state.read().unwrap().stop {
+                break 'deepen;
+            }
         }
         info.follow_pv = true;
         // Find the best move in the current position
@@ -126,7 +134,6 @@ pub fn search(
     println!("bestmove {}", info.pv_table[0][0].to_str().trim());
 }
 
-// Check up on UCI once for every 2047 nodes searched
 const CHECK_UP_NODES: u32 = 2047;
 
 fn negamax(
@@ -134,7 +141,7 @@ fn negamax(
     board: &mut Board,
     attack_info: &AttackInfo,
     mask: &EvalMasks,
-    uci_state: &mut UCIState,
+    uci_state: &Arc<RwLock<UCIState>>,
     zobrist_info: &ZobristInfo,
     mut alpha: i32,
     beta: i32,
@@ -149,14 +156,19 @@ fn negamax(
 
     // If score of current position exists, return score instead of searching
     // Read hash entry (if not root ply) score for current position and isn't PV node
-    let hash_score = info.tt.read_entry(board, alpha, beta, depth, info.ply);
+    let mut hash_score = None;
+    {
+        let mut info_tt = info.tt.write().unwrap();
+        hash_score = info_tt.read_entry(board, alpha, beta, depth, info.ply);
+    }
     if info.ply != 0 && !hash_score.is_none() && !is_pv_node {
         return hash_score.unwrap();
     }
 
     // Communicate with UCI every so often
     if (info.nodes & CHECK_UP_NODES) == 0 {
-        uci_state.check_up();
+        let mut info_state = uci_state.write().unwrap();
+        info_state.check_up();
     }
 
     // Escape condition or Base case
@@ -203,8 +215,10 @@ fn negamax(
         info.ply -= 1;
         *board = clone;
         // When timer runs out, return 0
-        if uci_state.stop {
-            return 0;
+        {
+            if uci_state.read().unwrap().stop {
+                return 0;
+            }
         }
         // Fail hard; beta-cutoffs
         if score >= beta {
@@ -303,8 +317,10 @@ fn negamax(
         // Repetition stuff
         *board = clone;
         // When timer runs out, return 0
-        if uci_state.stop {
-            return 0;
+        {
+            if uci_state.read().unwrap().stop {
+                return 0;
+            }
         }
         move_searched += 1;
 
@@ -332,7 +348,11 @@ fn negamax(
 
             // Fail hard; beta-cutoff
             if score >= beta {
-                info.tt.write_entry(&board, depth, beta, TTFlag::Beta, info.ply);
+                {
+                    let mut info_tt = info.tt.write().unwrap();
+                    info_tt.write_entry(&board, depth, beta, TTFlag::Beta, info.ply);
+                }
+
                 if !mv.is_capture() {
                     info.killer[1][info.ply as usize] = info.killer[0][info.ply as usize];
                     info.killer[0][info.ply as usize] = *mv;
@@ -354,7 +374,11 @@ fn negamax(
             return 0;
         }
     }
-    info.tt.write_entry(&board, depth, alpha, tt_flag, info.ply);
+
+    {
+        let mut info_tt = info.tt.write().unwrap();
+        info_tt.write_entry(&board, depth, alpha, tt_flag, info.ply);
+    }
     // Node (move) that fails low
     alpha
 }
@@ -364,14 +388,15 @@ pub fn quiescence(
     board: &mut Board,
     attack_info: &AttackInfo,
     mask: &EvalMasks,
-    uci_state: &mut UCIState,
+    uci_state: &Arc<RwLock<UCIState>>,
     zobrist_info: &ZobristInfo,
     mut alpha: i32,
     beta: i32,
 ) -> i32 {
     // Communicate with UCI every so often
     if (info.nodes & CHECK_UP_NODES) == 0 {
-        uci_state.check_up();
+        let mut info_state = uci_state.write().unwrap();
+        info_state.check_up();
     }
 
     info.nodes += 1;
@@ -412,8 +437,11 @@ pub fn quiescence(
         // Repetition stuff
         *board = clone;
         // When timer runs out, return 0
-        if uci_state.stop {
-            return 0;
+
+        {
+            if uci_state.read().unwrap().stop {
+                return 0;
+            }
         }
         if score > alpha {
             // PV node

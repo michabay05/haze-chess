@@ -11,6 +11,7 @@ enum Phase {
     Middlegame,
 }
 
+#[derive(Clone)]
 pub struct EvalMasks {
     pub rank: [BB; 64],
     pub file: [BB; 64],

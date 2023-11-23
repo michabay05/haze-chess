@@ -25,6 +25,7 @@ const HASH_MB: usize = 64;
 const HASH_SIZE: usize = 0x100000 * HASH_MB;
 const HASH_ENTRIES: usize = HASH_SIZE / std::mem::size_of::<TT>();
 
+#[derive(Clone)]
 pub struct HashTT {
     table: Vec<TT>,
 }

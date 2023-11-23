@@ -2,6 +2,7 @@ use crate::bb::BBUtil;
 use crate::board::Board;
 use crate::consts::{Piece, PieceColor, Sq};
 
+#[derive(Clone)]
 pub struct ZobristKey {
     pub piece: [[u64; 64]; 12],
     // Unnecessary work is being done for the enpassant keys
@@ -22,6 +23,7 @@ impl ZobristKey {
     }
 }
 
+#[derive(Clone)]
 pub struct ZobristLock {
     pub piece: [[u64; 64]; 12],
     // Unnecessary work is being done for the enpassant keys
@@ -42,6 +44,7 @@ impl ZobristLock {
     }
 }
 
+#[derive(Clone)]
 pub struct ZobristInfo {
     pub key: ZobristKey,
     pub lock: ZobristLock,
