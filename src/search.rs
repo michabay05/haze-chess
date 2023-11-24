@@ -156,6 +156,7 @@ fn negamax(
 
     // If score of current position exists, return score instead of searching
     // Read hash entry (if not root ply) score for current position and isn't PV node
+    #[allow(unused_assignments)]
     let mut hash_score = None;
     {
         let mut info_tt = info.tt.write().unwrap();

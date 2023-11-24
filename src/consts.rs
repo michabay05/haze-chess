@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 #[macro_export]
 macro_rules! SQ {
     ($row: expr, $col: expr) => {

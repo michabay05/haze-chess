@@ -15,7 +15,9 @@ pub struct Engine {
     pub search_info: SearchInfo,
     pub zobrist_info: ZobristInfo,
     pub uci_state: Arc<RwLock<UCIState>>,
-    pub search_thread: Option<Box<JoinHandle<()>>>
+    pub search_thread: Option<Box<JoinHandle<()>>>,
+
+    pub debug: bool,
 }
 
 impl Engine {
@@ -28,6 +30,7 @@ impl Engine {
             zobrist_info: ZobristInfo::new(),
             uci_state: Arc::new(RwLock::new(UCIState::new())),
             search_thread: None,
+            debug: false,
         };
         // Initialize attributes
         this.attack_info.init();

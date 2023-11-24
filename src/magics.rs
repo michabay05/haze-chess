@@ -1,5 +1,6 @@
+#![allow(dead_code)]
+
 use crate::attack;
-use crate::bb::{BBUtil, BB};
 use crate::consts::{PieceType, Sq};
 
 fn xor_random_u32(random_state: &mut u32) -> u32 {

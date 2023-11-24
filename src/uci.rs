@@ -1,4 +1,4 @@
-use crate::board::{self, Board};
+use crate::board::Board;
 use crate::consts::{Piece, PieceColor, Sq};
 use crate::engine::Engine;
 use crate::eval;
@@ -90,6 +90,10 @@ pub fn parse(engine: &mut Engine, input_str: &str, should_quit: &mut bool) {
             if let Some(th) = engine.search_thread.take() {
                 let _ = th.join();
             }
+            if engine.debug {
+                println!("Stopping calculation . . .");
+                println!("Search thread has joined the input thread.");
+            }
         }
         "ucinewgame" => parse_position(engine, "startpos"),
         "uci" => print_author_info(),
@@ -97,21 +101,48 @@ pub fn parse(engine: &mut Engine, input_str: &str, should_quit: &mut bool) {
         "position" => parse_position(engine, &rest),
         "go" => parse_go(engine, &rest),
         "evalpos" => {
-            let eval = eval::evaluate(
-                &engine.board.pos,
-                engine.board.state.side,
-                &engine.attack_info,
-                &engine.eval_mask,
-            );
-            println!("Current eval: {eval}");
+            if engine.debug {
+                let eval = eval::evaluate(
+                    &engine.board.pos,
+                    engine.board.state.side,
+                    &engine.attack_info,
+                    &engine.eval_mask,
+                );
+                println!("Current eval: {eval}");
+            } else {
+                eprintln!("[WARN] Engine should be in debug mode before sending this command!");
+                eprintln!("[INFO] Type 'help' to see commands.");
+            }
         }
         "genmoves" => {
-            let mut ml = MoveList::new();
-            move_gen::generate(&engine.board, &engine.attack_info, &mut ml);
-            ml.print();
+            if engine.debug {
+                let mut ml = MoveList::new();
+                move_gen::generate(&engine.board, &engine.attack_info, &mut ml);
+                ml.print();
+            } else {
+                eprintln!("[WARN] Engine should be in debug mode before sending this command!");
+                eprintln!("[INFO] Type 'help' to see commands.");
+            }
         }
-        "display" | "d" => engine.board.display(),
+        "display" | "d" => {
+            if engine.debug {
+                engine.board.display();
+            } else {
+                eprintln!("[WARN] Engine should be in debug mode before sending this command!");
+                eprintln!("[INFO] Type 'help' to see commands.");
+            }
+        }
         "help" => print_help(),
+        "debug" => {
+            match rest.as_str() {
+                "on" => {
+                    engine.debug = true;
+                    println!("Debug mode on!");
+                }
+                "off" => engine.debug = false,
+                _ => {}
+            }
+        }
         _ => {}
     }
 }
@@ -129,7 +160,6 @@ fn parse_position(engine: &mut Engine, args: &str) {
     if rest.find("moves").is_some() {
         parse_moves(engine, &rest);
     }
-    // engine.search_info.tt.clear_table();
     let mut engine_tt = engine.search_info.tt.write().unwrap();
     engine_tt.clear_table();
 }
@@ -230,23 +260,16 @@ fn parse_go(engine: &mut Engine, args: &str) {
         }
 
         // Print debug info
-        println!(
-            "time: {}, start: {}, stop: {}, depth: {}, timecontrol: {}",
-            state.time_left.unwrap_or(0),
-            state.start_time,
-            state.stop_time,
-            depth,
-            if state.time_controlled { "yes" } else { "no" }
-        );
-        /* search::search(
-            &mut engine.search_info,
-            &mut engine.board,
-            &engine.attack_info,
-            &engine.eval_mask,
-            &mut engine.uci_state,
-            &engine.zobrist_info,
-            depth,
-        ); */
+        if engine.debug {
+            println!(
+                "info string time: {}, start: {}, stop: {}, depth: {}, timecontrol: {}",
+                state.time_left.unwrap_or(0),
+                state.start_time,
+                state.stop_time,
+                depth,
+                if state.time_controlled { "yes" } else { "no" }
+            );
+        }
     }
     threads::launch_search_thread(engine, depth);
 }
@@ -291,13 +314,14 @@ fn print_help() {
     println!();
     println!("              Command name               |               Description");
     println!("=========================================|=============================================================");
-    println!("                  uci                    |    Prints engine info and 'uciok'");
-    println!("              isready                    |    Prints 'readyok' if the engine is ready");
+    println!("                  uci                    |    Returns engine info accompanied with 'uciok'");
+    println!("              isready                    |    Returns 'readyok' if the engine is ready");
     println!("    position startpos                    |    Set board to starting position");
-    println!("    position startpos moves <move1> ...  |    Set board to starting position then playing following moves");
+    println!("    position startpos moves <move1> ...  |    Set board to starting position then playing the following moves");
     println!("   position fen <FEN>                    |    Set board to a custom FEN");
-    println!("   position fen <FEN> moves <move1> ...  |    Set board to a custom FEN then playing following moves");
+    println!("   position fen <FEN> moves <move1> ...  |    Set board to a custom FEN then playing the following moves");
     println!("     go depth <depth>                    |    Returns the best move after search for given amount of depth");
+    println!("                debug [ on | off ]       |    Sends additional information when needed. Off by default");
     println!("                 stop                    |    Stops engine from calculating further");
     println!("                 quit                    |    Exit the UCI mode\n");
     println!("------------------------------------ EXTENSIONS ----------------------------------------");

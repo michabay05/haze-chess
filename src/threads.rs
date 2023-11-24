@@ -1,15 +1,7 @@
-use crate::board::Board;
 use crate::engine::Engine;
-use crate::search::{self, SearchInfo};
-use crate::uci::UCIState;
+use crate::search;
 
-use std::sync::{Arc, RwLock};
-
-struct SearchThreadData {
-    board: Board,
-    search_info: SearchInfo,
-    uci_state: Arc<RwLock<UCIState>>,
-}
+use std::sync::Arc;
 
 pub fn launch_search_thread(engine: &mut Engine, depth: u32) {
     let uci_state = Arc::clone(&engine.uci_state);

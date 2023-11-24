@@ -168,6 +168,7 @@ impl Board {
         println!("{}", castling_ltrs.iter().collect::<String>());
     }
 
+    #[allow(dead_code)]
     pub fn is_in_check(&self, attack_info: &AttackInfo, side: PieceColor) -> bool {
         let king_type = if side == PieceColor::Light {
             Piece::DK
@@ -227,6 +228,7 @@ pub fn sq_attacked(pos: &Position, attack_info: &AttackInfo, sq: Sq, side: Piece
 }
 
 /// `side` refers to the attacking side
+#[allow(dead_code)]
 pub fn print_attacked_sqs(board: &Board, attack_info: &AttackInfo, side: PieceColor) {
     for r in 0..8 {
         for f in 0..8 {
