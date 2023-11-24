@@ -68,13 +68,28 @@ impl UCIState {
     }
 }
 
-pub fn parse(engine: &mut Engine, input_str: &str) {
+pub fn parse(engine: &mut Engine, input_str: &str, should_quit: &mut bool) {
     let (first_arg, rest) = first_and_rest(input_str);
 
     match first_arg.as_str() {
+        "quit" => {
+            *should_quit = true;
+            {
+                let mut engine_state = engine.uci_state.write().unwrap();
+                engine_state.stop = true;
+            }
+            if let Some(th) = engine.search_thread.take() {
+                let _ = th.join();
+            }
+        }
         "stop" => {
-            let mut engine_state = engine.uci_state.write().unwrap();
-            engine_state.stop = true;
+            {
+                let mut engine_state = engine.uci_state.write().unwrap();
+                engine_state.stop = true;
+            }
+            if let Some(th) = engine.search_thread.take() {
+                let _ = th.join();
+            }
         }
         "ucinewgame" => parse_position(engine, "startpos"),
         "uci" => print_author_info(),
@@ -184,9 +199,9 @@ fn parse_go(engine: &mut Engine, args: &str) {
         return;
     }
     handle_time(engine, args);
+    let depth = parse_param(&args, "depth").unwrap_or(search::MAX_SEARCH_PLY as u32);
     {
         let mut state = engine.uci_state.write().unwrap();
-        let depth = parse_param(&args, "depth").unwrap_or(search::MAX_SEARCH_PLY as u32);
         state.depth = depth;
         if state.move_time.is_some() {
             state.time_left = state.move_time;
@@ -216,7 +231,7 @@ fn parse_go(engine: &mut Engine, args: &str) {
 
         // Print debug info
         println!(
-            "time: {},  start: {},  stop: {},  depth: {},  timecontrol: {}",
+            "time: {}, start: {}, stop: {}, depth: {}, timecontrol: {}",
             state.time_left.unwrap_or(0),
             state.start_time,
             state.stop_time,
@@ -232,8 +247,8 @@ fn parse_go(engine: &mut Engine, args: &str) {
             &engine.zobrist_info,
             depth,
         ); */
-        let _ = threads::launch_search_thread(&engine, depth);
     }
+    threads::launch_search_thread(engine, depth);
 }
 
 fn handle_time(engine: &mut Engine, cmd: &str) {

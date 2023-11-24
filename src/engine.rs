@@ -6,6 +6,7 @@ use crate::uci::UCIState;
 use crate::zobrist::ZobristInfo;
 
 use std::sync::{Arc, RwLock};
+use std::thread::JoinHandle;
 
 pub struct Engine {
     pub attack_info: AttackInfo,
@@ -14,6 +15,7 @@ pub struct Engine {
     pub search_info: SearchInfo,
     pub zobrist_info: ZobristInfo,
     pub uci_state: Arc<RwLock<UCIState>>,
+    pub search_thread: Option<Box<JoinHandle<()>>>
 }
 
 impl Engine {
@@ -25,6 +27,7 @@ impl Engine {
             search_info: SearchInfo::new(),
             zobrist_info: ZobristInfo::new(),
             uci_state: Arc::new(RwLock::new(UCIState::new())),
+            search_thread: None,
         };
         // Initialize attributes
         this.attack_info.init();

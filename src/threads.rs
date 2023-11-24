@@ -11,14 +11,14 @@ struct SearchThreadData {
     uci_state: Arc<RwLock<UCIState>>,
 }
 
-pub fn launch_search_thread(engine: &Engine, depth: u32) {
+pub fn launch_search_thread(engine: &mut Engine, depth: u32) {
     let uci_state = Arc::clone(&engine.uci_state);
     let mut board = engine.board.clone();
     let mut search_info = engine.search_info.clone();
     let attack_info = engine.attack_info.clone();
     let eval_mask = engine.eval_mask.clone();
     let zobrist_info = engine.zobrist_info.clone();
-    std::thread::spawn(move || {
+    let th = std::thread::spawn(move || {
         search::search(
             &mut search_info,
             &mut board,
@@ -29,8 +29,6 @@ pub fn launch_search_thread(engine: &Engine, depth: u32) {
             depth
         );
     });
-}
 
-pub fn join_search_thread() {
-    unimplemented!("Join the search thread with the input thread");
+    engine.search_thread = Some(Box::new(th));
 }

@@ -30,10 +30,7 @@ fn main() {
         let _ = io::stdout().flush();
         if let Ok(_) = io::stdin().read_line(&mut buf) {
             let buf = buf.trim();
-            match buf {
-                "quit" | "exit" => quit = true,
-                _ => uci::parse(&mut engine, buf),
-            }
+            uci::parse(&mut engine, buf, &mut quit);
         } else {
             eprintln!("[ERROR] Couldn't read input. Please try again!");
         }
