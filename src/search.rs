@@ -3,8 +3,10 @@ use crate::bb::BBUtil;
 use crate::board::{self, Board};
 use crate::consts::{Piece, PieceColor, Sq};
 use crate::eval::{self, EvalMasks};
+use crate::engine::Engine;
 use crate::move_gen::{self, MoveList};
 use crate::moves::{self, Move, MoveFlag, MoveUtil};
+use crate::threads;
 use crate::tt::{HashTT, TTFlag};
 use crate::uci::{self, UCIState};
 use crate::zobrist::{ZobristInfo, self, ZobristAction};
@@ -62,18 +64,44 @@ impl SearchInfo {
     }
 }
 
-pub fn search(
-    info: &mut SearchInfo,
-    board: &mut Board,
-    attack_info: &AttackInfo,
-    mask: &EvalMasks,
-    uci_state: &Arc<RwLock<UCIState>>,
-    zobrist_info: &ZobristInfo,
-    depth: u32,
-) {
-    *info = SearchInfo::new();
+#[derive(Clone)]
+pub struct SearchData {
+    pub attack_info: AttackInfo,
+    pub board: Board,
+    pub eval_mask: EvalMasks,
+    pub search_info: SearchInfo,
+    pub zobrist_info: ZobristInfo,
+    pub uci_state: Arc<RwLock<UCIState>>,
+}
+
+impl SearchData {
+    pub fn from_engine(engine: &Engine) -> Self {
+        Self {
+            attack_info: engine.attack_info.clone(),
+            board: engine.board.clone(),
+            eval_mask: engine.eval_mask.clone(),
+            search_info: engine.search_info.clone(),
+            zobrist_info: engine.zobrist_info.clone(),
+            uci_state: Arc::clone(&engine.uci_state),
+        }
+    }
+}
+
+pub fn search_pos(data: &SearchData, depth: u32, thread_count: usize) {
+    // 1. Create search worker threads
+    let workers = threads::create_search_workers(data, depth, thread_count);
+    // 2. Join the search worker threads
+    for mut worker in workers {
+        if let Some(th) = worker.handle.take() {
+            let _ = th.join();
+        }
+    }
+}
+
+pub fn worker_search_pos(mut data: SearchData, depth: u32, worker_id: usize) {
+    data.search_info = SearchInfo::new();
     {
-        let mut info_state = uci_state.write().unwrap();
+        let mut info_state = data.uci_state.write().unwrap();
         info_state.stop = false;
     }
     let mut alpha = -INFINITY;
@@ -83,19 +111,19 @@ pub fn search(
     let mut score;
     'deepen: for current_depth in 1..=depth {
         {
-            if uci_state.read().unwrap().stop {
+            if data.uci_state.read().unwrap().stop {
                 break 'deepen;
             }
         }
-        info.follow_pv = true;
+        data.search_info.follow_pv = true;
         // Find the best move in the current position
         score = negamax(
-            info,
-            board,
-            attack_info,
-            mask,
-            uci_state,
-            zobrist_info,
+            &mut data.search_info,
+            &mut data.board,
+            &data.attack_info,
+            &data.eval_mask,
+            &data.uci_state,
+            &data.zobrist_info,
             alpha,
             beta,
             current_depth,
@@ -112,7 +140,11 @@ pub fn search(
 
         let time_diff = uci::get_curr_time() - start_time;
 
-        if info.pv_len[0] != 0 {
+        if worker_id != 0 {
+            continue;
+        }
+        // Only the first worker thread should print these information
+        if data.search_info.pv_len[0] != 0 {
             let (cp_str, cp_score) = if score > -MATE_VALUE && score < -MATE_SCORE {
                 ("mate", (-(score + MATE_VALUE) / 2) - 1)
             } else if score > MATE_VALUE && score < MATE_SCORE {
@@ -122,16 +154,18 @@ pub fn search(
             };
             print!(
                 "info score {} {} depth {} nodes {} time {} pv ",
-                cp_str, cp_score, current_depth, info.nodes, time_diff
+                cp_str, cp_score, current_depth, data.search_info.nodes, time_diff
             );
             // Print principal variation
-            for i in 0..(info.pv_len[0] as usize) {
-                print!("{} ", info.pv_table[0][i].to_str().trim());
+            for i in 0..(data.search_info.pv_len[0] as usize) {
+                print!("{} ", data.search_info.pv_table[0][i].to_str().trim());
             }
             println!();
         }
     }
-    println!("bestmove {}", info.pv_table[0][0].to_str().trim());
+    if worker_id == 0 {
+        println!("bestmove {}", data.search_info.pv_table[0][0].to_str().trim());
+    }
 }
 
 const CHECK_UP_NODES: u32 = 2047;

@@ -20,6 +20,7 @@ use std::io::{self, Write};
 use engine::Engine;
 
 const VERSION: &str = "1.0";
+const NUM_OF_THREADS: usize = 3;
 
 fn main() {
     let mut engine = Engine::new();

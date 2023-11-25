@@ -5,6 +5,8 @@ use crate::search::SearchInfo;
 use crate::uci::UCIState;
 use crate::zobrist::ZobristInfo;
 
+use crate::NUM_OF_THREADS;
+
 use std::sync::{Arc, RwLock};
 use std::thread::JoinHandle;
 
@@ -15,7 +17,8 @@ pub struct Engine {
     pub search_info: SearchInfo,
     pub zobrist_info: ZobristInfo,
     pub uci_state: Arc<RwLock<UCIState>>,
-    pub search_thread: Option<Box<JoinHandle<()>>>,
+    pub search_thread: Option<JoinHandle<()>>,
+    pub worker_thread_count: usize,
 
     pub debug: bool,
 }
@@ -30,6 +33,7 @@ impl Engine {
             zobrist_info: ZobristInfo::new(),
             uci_state: Arc::new(RwLock::new(UCIState::new())),
             search_thread: None,
+            worker_thread_count: NUM_OF_THREADS,
             debug: false,
         };
         // Initialize attributes
