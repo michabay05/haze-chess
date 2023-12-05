@@ -16,7 +16,7 @@ pub const FEN_POSITIONS: [&str; 8] = [
 
 pub fn parse(fen: &str, zobrist_info: &ZobristInfo) -> Board {
     let mut board: Board = Board::new();
-    let mut fen_parts = fen.split_ascii_whitespace().into_iter();
+    let mut fen_parts = fen.split_ascii_whitespace();
 
     // Place piece on square
     parse_pieces(fen_parts.next().unwrap(), &mut board.pos);
@@ -30,7 +30,7 @@ pub fn parse(fen: &str, zobrist_info: &ZobristInfo) -> Board {
     }
 
     // Set castling right
-    for castling_type in fen_parts.next().unwrap().chars().into_iter() {
+    for castling_type in fen_parts.next().unwrap().chars() {
         if castling_type == 'K' {
             board
                 .state
@@ -74,12 +74,12 @@ pub fn parse(fen: &str, zobrist_info: &ZobristInfo) -> Board {
 
 fn parse_pieces(fen_piece: &str, pos: &mut Position) {
     let mut sq: u8 = 0;
-    for piece_char in fen_piece.chars().into_iter() {
+    for piece_char in fen_piece.chars() {
         if piece_char == '/' {
             continue;
         } else if piece_char.is_ascii_digit() {
             // Retrieve the int value of the offset from the char value
-            let offset: u8 = piece_char as u8 - '0' as u8;
+            let offset: u8 = piece_char as u8 - b'0';
             // Add offset value to square counter
             sq += offset;
         } else if piece_char.is_ascii_alphabetic() {

@@ -108,12 +108,12 @@ fn gen_sliding(attack_info: &mut AttackInfo, piece: PieceType) {
             let magic_ind;
             if piece == PieceType::Bishop {
                 let num = u128::from(occupancy) * u128::from(BISHOP_MAGICS[sq]);
-                magic_ind = (num as u64) >> 64 - bit_count;
+                magic_ind = (num as u64) >> (64 - bit_count);
                 attack_info.bishop_attack[sq][magic_ind as usize] =
                     gen_bishop_attack(sq, occupancy);
             } else {
                 let num = u128::from(occupancy) * u128::from(ROOK_MAGICS[sq]);
-                magic_ind = (num as u64) >> 64 - bit_count;
+                magic_ind = (num as u64) >> (64 - bit_count);
                 attack_info.rook_attack[sq][magic_ind as usize] = gen_rook_attack(sq, occupancy);
             }
         }
@@ -177,16 +177,16 @@ fn gen_knight(attack_info: &mut AttackInfo, sq: usize) {
 fn gen_king(attack_info: &mut AttackInfo, sq: usize) {
     let bb = &mut attack_info.king[sq];
     if ROW!(sq) > 0 {
-        bb.set((sq as i32 + Direction::SOUTH as i32) as usize);
+        bb.set((sq as i32 + Direction::South as i32) as usize);
     }
     if ROW!(sq) < 7 {
-        bb.set((sq as i32 + Direction::NORTH as i32) as usize);
+        bb.set((sq as i32 + Direction::North as i32) as usize);
     }
     if COL!(sq) > 0 {
-        bb.set((sq as i32 + Direction::WEST as i32) as usize);
+        bb.set((sq as i32 + Direction::West as i32) as usize);
     }
     if COL!(sq) < 7 {
-        bb.set((sq as i32 + Direction::EAST as i32) as usize);
+        bb.set((sq as i32 + Direction::East as i32) as usize);
     }
     if ROW!(sq) > 0 && COL!(sq) > 0 {
         bb.set((sq as i32 + Direction::SW as i32) as usize);

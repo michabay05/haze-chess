@@ -69,7 +69,7 @@ fn find_magic_number(sq: usize, relevant_bits: u32, piece: PieceType) -> u64 {
         let mut fail = false;
         while !fail && count < occ_indices {
             let num = u128::from(occupancies[count]) * u128::from(magic_num);
-            let magic_ind = (num as u64) >> 64 - relevant_bits;
+            let magic_ind = (num as u64) >> (64 - relevant_bits);
             if used_attacks[magic_ind as usize] == 0 {
                 used_attacks[magic_ind as usize] = attacks[count];
             } else if used_attacks[magic_ind as usize] != attacks[count] {
@@ -81,11 +81,8 @@ fn find_magic_number(sq: usize, relevant_bits: u32, piece: PieceType) -> u64 {
             return magic_num;
         }
     }
-    println!(
-        "Failed to find magic number on {}",
-        Sq::to_string(Sq::from_num(sq))
-    );
-    return 0;
+    println!("Failed to find magic number on {}", Sq::from_num(sq));
+    0
 }
 
 pub fn init() {

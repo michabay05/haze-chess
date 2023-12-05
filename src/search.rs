@@ -62,6 +62,17 @@ impl SearchInfo {
             tt: Arc::new(RwLock::new(HashTT::new())),
         }
     }
+
+    pub fn reset(&mut self) {
+        self.ply = 0;
+        self.nodes = 0;
+        self.follow_pv = false;
+        self.score_pv = false;
+        self.killer = [[0; MAX_SEARCH_PLY]; 2];
+        self.history = [[0; 64]; 12];
+        self.pv_len = [0; MAX_SEARCH_PLY];
+        self.pv_table = [[0; MAX_SEARCH_PLY]; MAX_SEARCH_PLY];
+    }
 }
 
 #[derive(Clone)]
@@ -99,7 +110,8 @@ pub fn search_pos(data: &SearchData, depth: u32, thread_count: usize) {
 }
 
 pub fn worker_search_pos(mut data: SearchData, depth: u32, worker_id: usize) {
-    data.search_info = SearchInfo::new();
+    // data.search_info = SearchInfo::new();
+    data.search_info.reset();
     {
         let mut info_state = data.uci_state.write().unwrap();
         info_state.stop = false;
@@ -147,7 +159,7 @@ pub fn worker_search_pos(mut data: SearchData, depth: u32, worker_id: usize) {
         if data.search_info.pv_len[0] != 0 {
             let (cp_str, cp_score) = if score > -MATE_VALUE && score < -MATE_SCORE {
                 ("mate", (-(score + MATE_VALUE) / 2) - 1)
-            } else if score > MATE_VALUE && score < MATE_SCORE {
+            } else if score > MATE_SCORE && score < MATE_VALUE {
                 ("mate", ((MATE_VALUE - score) / 2) + 1)
             } else {
                 ("cp", score)
@@ -196,7 +208,7 @@ fn negamax(
         let mut info_tt = info.tt.write().unwrap();
         hash_score = info_tt.read_entry(board, alpha, beta, depth, info.ply);
     }
-    if info.ply != 0 && !hash_score.is_none() && !is_pv_node {
+    if info.ply != 0 && hash_score.is_some() && !is_pv_node {
         return hash_score.unwrap();
     }
 
@@ -385,7 +397,7 @@ fn negamax(
             if score >= beta {
                 {
                     let mut info_tt = info.tt.write().unwrap();
-                    info_tt.write_entry(&board, depth, beta, TTFlag::Beta, info.ply);
+                    info_tt.write_entry(board, depth, beta, TTFlag::Beta, info.ply);
                 }
 
                 if !mv.is_capture() {
@@ -412,7 +424,7 @@ fn negamax(
 
     {
         let mut info_tt = info.tt.write().unwrap();
-        info_tt.write_entry(&board, depth, alpha, tt_flag, info.ply);
+        info_tt.write_entry(board, depth, alpha, tt_flag, info.ply);
     }
     // Node (move) that fails low
     alpha
@@ -516,11 +528,11 @@ fn score_move(info: &mut SearchInfo, board: &mut Board, mv: Move) -> u32 {
             }
         }
         // Add 10,000 to ensure captures are evaluated before killer moves
-        return MVV_LVA[(mv.piece() as usize) % 6][captured % 6] + 10_000;
+        MVV_LVA[(mv.piece() as usize) % 6][captured % 6] + 10_000
     } else {
         // Score the best killer move
         if info.killer[0][info.ply as usize] == mv {
-            return 9000;
+            9000
         } else if info.killer[1][info.ply as usize] == mv {
             return 8000;
         } else {
@@ -540,13 +552,15 @@ fn sort_moves(info: &mut SearchInfo, board: &mut Board, ml: &mut MoveList) {
         for next in (curr + 1)..ml.moves.len() {
             if move_score_list[curr] < move_score_list[next] {
                 // Swap scores
-                let temp = move_score_list[curr];
+                move_score_list.swap(curr, next);
+                /* let temp = move_score_list[curr];
                 move_score_list[curr] = move_score_list[next];
-                move_score_list[next] = temp;
+                move_score_list[next] = temp; */
                 // Swap moves
-                let temp = ml.moves[curr];
+                ml.moves.swap(curr, next);
+                /* let temp = ml.moves[curr];
                 ml.moves[curr] = ml.moves[next];
-                ml.moves[next] = temp;
+                ml.moves[next] = temp; */
             }
         }
     }

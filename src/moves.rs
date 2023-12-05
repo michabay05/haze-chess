@@ -217,10 +217,10 @@ pub fn make(
             let direction;
             if main.state.side == PieceColor::Light {
                 pawn_type = Piece::DP;
-                direction = Direction::NORTH;
+                direction = Direction::North;
             } else {
                 pawn_type = Piece::LP;
-                direction = Direction::SOUTH;
+                direction = Direction::South;
             }
             main.pos.piece[pawn_type as usize].pop((target as i32 + direction as i32) as usize);
             zobrist::update(
@@ -241,10 +241,10 @@ pub fn make(
         if is_twosquare {
             if main.state.side == PieceColor::Light {
                 main.state.enpassant =
-                    Sq::from_num((target as i32 + Direction::NORTH as i32) as usize);
+                    Sq::from_num((target as i32 + Direction::North as i32) as usize);
             } else {
                 main.state.enpassant =
-                    Sq::from_num((target as i32 + Direction::SOUTH as i32) as usize);
+                    Sq::from_num((target as i32 + Direction::South as i32) as usize);
             }
             zobrist::update(
                 zobrist_info,
@@ -325,21 +325,19 @@ pub fn make(
             lock_from_scratch
         );
          ============= FOR DEBUG PURPOSES ONLY =============== */
-        if board::in_check(&main, attack_info, main.state.side) {
+        if board::in_check(main, attack_info, main.state.side) {
             *main = clone;
-            return false;
+            false
         } else {
             // Increment full moves
             if main.state.side == PieceColor::Dark {
                 main.state.full_moves += 1;
             }
-            return true;
+            true
         }
+    } else if mv.is_capture() {
+        make(main, attack_info, zobrist_info, mv, MoveFlag::AllMoves)
     } else {
-        if mv.is_capture() {
-            return make(main, attack_info, zobrist_info, mv, MoveFlag::AllMoves);
-        } else {
-            return false;
-        }
+        false
     }
 }

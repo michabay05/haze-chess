@@ -101,37 +101,20 @@ pub fn parse(engine: &mut Engine, input_str: &str, should_quit: &mut bool) {
         "position" => parse_position(engine, &rest),
         "go" => parse_go(engine, &rest),
         "evalpos" => {
-            if engine.debug {
-                let eval = eval::evaluate(
-                    &engine.board.pos,
-                    engine.board.state.side,
-                    &engine.attack_info,
-                    &engine.eval_mask,
-                );
-                println!("Current eval: {eval}");
-            } else {
-                eprintln!("[WARN] Engine should be in debug mode before sending this command!");
-                eprintln!("[INFO] Type 'help' to see commands.");
-            }
+            let eval = eval::evaluate(
+                &engine.board.pos,
+                engine.board.state.side,
+                &engine.attack_info,
+                &engine.eval_mask,
+            );
+            println!("Current eval: {eval}");
         }
         "genmoves" => {
-            if engine.debug {
-                let mut ml = MoveList::new();
-                move_gen::generate(&engine.board, &engine.attack_info, &mut ml);
-                ml.print();
-            } else {
-                eprintln!("[WARN] Engine should be in debug mode before sending this command!");
-                eprintln!("[INFO] Type 'help' to see commands.");
-            }
+            let mut ml = MoveList::new();
+            move_gen::generate(&engine.board, &engine.attack_info, &mut ml);
+            ml.print();
         }
-        "display" | "d" => {
-            if engine.debug {
-                engine.board.display();
-            } else {
-                eprintln!("[WARN] Engine should be in debug mode before sending this command!");
-                eprintln!("[INFO] Type 'help' to see commands.");
-            }
-        }
+        "display" | "d" => engine.board.display(),
         "help" => print_help(),
         "debug" => {
             match rest.as_str() {
@@ -157,7 +140,7 @@ fn parse_position(engine: &mut Engine, args: &str) {
         engine.board = Board::from_fen(&args[(ind + first_arg.len() + 1)..], &engine.zobrist_info);
     }
 
-    if rest.find("moves").is_some() {
+    if rest.contains("moves") {
         parse_moves(engine, &rest);
     }
     let mut engine_tt = engine.search_info.tt.write().unwrap();
@@ -166,7 +149,7 @@ fn parse_position(engine: &mut Engine, args: &str) {
 
 fn parse_moves(engine: &mut Engine, args: &str) {
     let (_, rest) = first_and_rest(args);
-    let list_of_moves = rest.split(" ");
+    let list_of_moves = rest.split(' ');
 
     for el in list_of_moves {
         // If current move is a promotion
@@ -229,7 +212,7 @@ fn parse_go(engine: &mut Engine, args: &str) {
         return;
     }
     handle_time(engine, args);
-    let depth = parse_param(&args, "depth").unwrap_or(search::MAX_SEARCH_PLY as u32);
+    let depth = parse_param(args, "depth").unwrap_or(search::MAX_SEARCH_PLY as u32);
     {
         let mut state = engine.uci_state.write().unwrap();
         state.depth = depth;
@@ -330,7 +313,7 @@ fn print_help() {
 }
 
 fn first_and_rest(input_str: &str) -> (String, String) {
-    let space_ind = input_str.find(" ").unwrap_or(input_str.len());
+    let space_ind = input_str.find(' ').unwrap_or(input_str.len());
     let first = &input_str[0..space_ind];
     let rest = input_str[space_ind..].trim();
     (first.to_string(), rest.to_string())

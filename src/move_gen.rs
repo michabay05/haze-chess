@@ -19,7 +19,15 @@ impl MoveList {
         #[rustfmt::skip]
         fn y_or_n(sth: bool) -> char { if sth {'1'} else {' '} }
         for el in &self.moves {
-            println!("       {}    |    {}     |    {}    |     {}      |     {}     |         {}         |      {}      |     {}", Sq::to_string(el.source()), Sq::to_string(el.target()), Piece::to_char(Some(el.piece())), Piece::to_char(el.promoted()), y_or_n(el.is_capture()), y_or_n(el.is_twosquare()), y_or_n(el.is_enpassant()), y_or_n(el.is_castling())
+            println!("       {}    |    {}     |    {}    |     {}      |     {}     |         {}         |      {}      |     {}",
+                el.source(),
+                el.target(),
+                Piece::to_char(Some(el.piece())),
+                Piece::to_char(el.promoted()),
+                y_or_n(el.is_capture()),
+                y_or_n(el.is_twosquare()),
+                y_or_n(el.is_enpassant()),
+                y_or_n(el.is_castling())
             );
         }
         println!("\n    Total number of moves: {}", self.moves.len());
@@ -63,14 +71,14 @@ fn generate_pawns(board: &Board, attack_info: &AttackInfo, ml: &mut MoveList) {
         promotion_start = Sq::A7;
         twosquarepush_start = Sq::A2;
         enemy_rank_start = Sq::A8;
-        direction = Direction::SOUTH;
+        direction = Direction::South;
     } else {
         piece = Piece::DP;
         enemy_color = PieceColor::Light;
         promotion_start = Sq::A2;
         twosquarepush_start = Sq::A7;
         enemy_rank_start = Sq::H1;
-        direction = Direction::NORTH;
+        direction = Direction::North;
     }
 
     bb_copy = board.pos.piece[piece as usize];

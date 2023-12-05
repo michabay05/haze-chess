@@ -138,10 +138,7 @@ impl Board {
             }
         );
         self.print_castling();
-        println!(
-            "         Enpassant: {}",
-            Sq::to_string(self.state.enpassant)
-        );
+        println!( "         Enpassant: {}", self.state.enpassant);
         println!("        Full Moves: {}\n", self.state.full_moves);
     }
 
@@ -224,7 +221,7 @@ pub fn sq_attacked(pos: &Position, attack_info: &AttackInfo, sq: Sq, side: Piece
     if (attack_info.king[sq as usize] & pos.piece[(side as usize) * 6 + 5]) != 0 {
         return true;
     }
-    return false;
+    false
 }
 
 /// `side` refers to the attacking side

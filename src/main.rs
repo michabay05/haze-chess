@@ -20,7 +20,7 @@ use std::io::{self, Write};
 use engine::Engine;
 
 const VERSION: &str = "1.0";
-const NUM_OF_THREADS: usize = 3;
+const NUM_OF_THREADS: usize = 1;
 
 fn main() {
     let mut engine = Engine::new();
@@ -29,7 +29,7 @@ fn main() {
 
     while !quit {
         let _ = io::stdout().flush();
-        if let Ok(_) = io::stdin().read_line(&mut buf) {
+        if io::stdin().read_line(&mut buf).is_ok() {
             let buf = buf.trim();
             uci::parse(&mut engine, buf, &mut quit);
         } else {
