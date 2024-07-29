@@ -41,7 +41,7 @@ pub struct State {
     // The 'key' is the primary zobrist hashing key, while the 'lock'
     // serves as the secondary hashing key. This is done to prevent the
     // chance of collision(two positions with the same key). Even though,
-    // the chances of two positions having the same key is small, they may
+    // the chances of two positions having the same key is small, it may
     // happen. Therefore, this chance can be significantly reduced by adding
     // a second key to every position
     pub key: u64,
