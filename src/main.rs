@@ -9,6 +9,7 @@ mod magics;
 mod move_gen;
 mod moves;
 mod perft;
+mod prng;
 mod search;
 mod threads;
 mod tt;

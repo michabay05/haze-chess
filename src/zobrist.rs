@@ -1,6 +1,7 @@
 use crate::bb::BBUtil;
 use crate::board::Board;
 use crate::consts::{Piece, PieceColor, Sq};
+use crate::prng::PRNG;
 
 #[derive(Clone)]
 pub struct ZobristKey {
@@ -48,6 +49,7 @@ impl ZobristLock {
 pub struct ZobristInfo {
     pub key: ZobristKey,
     pub lock: ZobristLock,
+    pub prng: PRNG,
 }
 
 impl ZobristInfo {
@@ -55,29 +57,30 @@ impl ZobristInfo {
         Self {
             key: ZobristKey::new(),
             lock: ZobristLock::new(),
+            prng: PRNG::new(0x246C_CB2D_3B40_2853_9918_0A6D_BC3A_F444),
         }
     }
 
     pub fn init(&mut self) {
         for piece in 0..=11 {
             for sq in 0..64 {
-                self.key.piece[piece][sq] = rand::random();
-                self.lock.piece[piece][sq] = rand::random();
+                self.key.piece[piece][sq] = self.prng.rand64();
+                self.lock.piece[piece][sq] = self.prng.rand64();
             }
         }
 
         for sq in 0..64 {
-            self.key.enpassant[sq] = rand::random();
-            self.lock.enpassant[sq] = rand::random();
+            self.key.enpassant[sq] = self.prng.rand64();
+            self.lock.enpassant[sq] = self.prng.rand64();
         }
 
         // All different variations of castling rights - (1 << 4)
         for i in 0..16 {
-            self.key.castling[i] = rand::random();
-            self.lock.castling[i] = rand::random();
+            self.key.castling[i] = self.prng.rand64();
+            self.lock.castling[i] = self.prng.rand64();
         }
-        self.key.side = rand::random();
-        self.lock.side = rand::random();
+        self.key.side = self.prng.rand64();
+        self.lock.side = self.prng.rand64();
     }
 }
 
