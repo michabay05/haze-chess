@@ -236,21 +236,19 @@ fn parse_go(engine: &mut Engine, args: &str) {
         }
 
         // Example UCI command with time
-        // go depth 12 wtime 180000 btime 100000 binc 1000 winc 1000 movetime 1000 movestogo 40
+        // go depth 12 wtime 180000 btime 180000 binc 1000 winc 1000 movestogo 40
         // go movetime 1000
         state.start_time = get_curr_time();
         if let Some(tl) = state.time_left {
             state.time_controlled = true;
-            state.time_left = Some(tl / state.moves_to_go);
-            if tl > 1500 {
-                state.time_left = Some(tl - 50);
+            let mut per_move_tl = tl / state.moves_to_go;
+            if per_move_tl > 1500 {
+                per_move_tl -= 50;
             }
-            state.stop_time = state.start_time + (tl + state.increment) as u128;
-            if tl < 1500 && state.increment != 0 && state.depth == MAX_SEARCH_PLY as u32 {
-                let mut a = state.increment as i32 - 50;
-                if a <= 0 {
-                    a = 0;
-                }
+            state.time_left = Some(per_move_tl);
+            state.stop_time = state.start_time + (per_move_tl + state.increment) as u128;
+            if per_move_tl < 1500 && state.increment != 0 && state.depth == MAX_SEARCH_PLY as u32 {
+                let a = state.increment.saturating_sub(50);
                 state.stop_time = state.start_time + a as u128;
             }
         }
@@ -286,19 +284,17 @@ fn handle_time(engine: &mut Engine, cmd: &str) {
 }
 
 fn parse_param(cmd: &str, name: &str) -> Option<u32> {
+    let mut val: Option<u32> = None;
     if let Some(ind) = cmd.find(name) {
         let portion = &cmd[ind..];
         let i = split_by_first_space(portion);
         let name_portion = (&portion[i..]).trim();
         let ind2 = split_by_first_space(name_portion);
         if let Ok(num) = (&name_portion[0..ind2]).parse::<u32>() {
-            Some(num)
-        } else {
-            None
+            val = Some(num);
         }
-    } else {
-        return None;
     }
+    return val;
 }
 
 pub fn print_author_info() {
