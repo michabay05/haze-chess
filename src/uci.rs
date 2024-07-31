@@ -300,6 +300,8 @@ fn parse_param(cmd: &str, name: &str) -> Option<u32> {
 pub fn print_author_info() {
     println!("id name haze {}", VERSION);
     println!("id author michabay05");
+    println!("option name Hash type spin default 256 min 1 max 1024");
+    println!("option name Thread type spin default 1 min 1 max 4");
     println!("uciok");
 }
 
