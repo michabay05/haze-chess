@@ -1,4 +1,3 @@
-use crate::board::Board;
 use crate::consts::{Piece, PieceColor, Sq};
 use crate::engine::Engine;
 use crate::eval;
@@ -142,10 +141,10 @@ fn parse_position(engine: &mut Engine, args: &str) {
 
     match first_arg {
         "startpos" => {
-            engine.board = Board::from_fen(FEN_POSITIONS[1], &engine.zobrist_info);
+            engine.board.set_fen(FEN_POSITIONS[1]);
         }
         "fen" => {
-            engine.board = Board::from_fen(&rest.trim(), &engine.zobrist_info);
+            engine.board.set_fen(&rest.trim());
         }
         // TODO: figure out the best course of action here
         // Is it better to ignore an unknown argument or display a message stating it?
@@ -180,10 +179,9 @@ fn parse_moves(engine: &mut Engine, args: &str) {
             el.to_string()
         };
         if let Some(mv) = find_move(engine, &mv_str) {
-            moves::make(
+            moves::play(
                 &mut engine.board,
                 &engine.attack_info,
-                &engine.zobrist_info,
                 mv,
                 moves::MoveFlag::AllMoves,
             );
@@ -223,7 +221,6 @@ fn parse_go(engine: &mut Engine, args: &str) {
         perft::test(
             &mut engine.board,
             &engine.attack_info,
-            &engine.zobrist_info,
             perft_depth,
         );
         return;

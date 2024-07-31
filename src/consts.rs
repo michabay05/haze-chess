@@ -31,7 +31,7 @@ macro_rules! FLIP_SQ {
     };
 }
 
-pub use {COL, FLIP_SQ, ROW, SQ};
+pub use SQ;
 
 #[rustfmt::skip]
 const PIECE_CHAR: [char; 13] = ['P', 'N', 'B', 'R', 'Q', 'K', 'p', 'n', 'b', 'r', 'q', 'k', ' '];

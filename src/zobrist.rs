@@ -87,11 +87,12 @@ impl ZobristInfo {
 pub enum ZobristAction {
     Castling,
     ChangeColor,
-    SetEnpassant(Sq),
+    Enpassant,
     TogglePiece(Piece, Sq),
 }
 
-pub fn update(info: &ZobristInfo, action: ZobristAction, board: &mut Board) {
+pub fn update(action: ZobristAction, board: &mut Board) {
+    let info = &board.zobrist_info;
     match action {
         ZobristAction::Castling => {
             board.state.key ^= info.key.castling[board.state.castling as usize];
@@ -101,9 +102,11 @@ pub fn update(info: &ZobristInfo, action: ZobristAction, board: &mut Board) {
             board.state.key ^= info.key.side;
             board.state.lock ^= info.lock.side;
         }
-        ZobristAction::SetEnpassant(sq) => {
-            board.state.key ^= info.key.enpassant[sq as usize];
-            board.state.lock ^= info.lock.enpassant[sq as usize];
+        ZobristAction::Enpassant => {
+            if board.state.enpassant != Sq::NoSq {
+                board.state.key ^= info.key.enpassant[board.state.enpassant as usize];
+                board.state.lock ^= info.lock.enpassant[board.state.enpassant as usize];
+            }
         }
         ZobristAction::TogglePiece(piece, sq) => {
             board.state.key ^= info.key.piece[piece as usize][sq as usize];

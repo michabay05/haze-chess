@@ -92,7 +92,7 @@ impl SearchData {
             board: engine.board.clone(),
             eval_mask: engine.eval_mask.clone(),
             search_info: engine.search_info.clone(),
-            zobrist_info: engine.zobrist_info.clone(),
+            zobrist_info: engine.board.zobrist_info.clone(),
             uci_state: Arc::clone(&engine.uci_state),
         }
     }
@@ -242,11 +242,11 @@ fn negamax(
         info.ply += 1;
         // Repetition stuff
         if board.state.enpassant != Sq::NoSq {
-            zobrist::update(zobrist_info, ZobristAction::SetEnpassant(board.state.enpassant), board);
+            zobrist::update(ZobristAction::Enpassant, board);
         }
         board.state.enpassant = Sq::NoSq;
         board.state.change_side();
-        zobrist::update(zobrist_info, ZobristAction::ChangeColor, board);
+        zobrist::update(ZobristAction::ChangeColor, board);
         // Search move with reduced depth to find beta-cutoffs
         score = -negamax(
             info,
@@ -287,7 +287,7 @@ fn negamax(
         info.ply += 1;
         // Repetition stuff
         // Make sure that every move from this point on is legal
-        if !moves::make(board, attack_info, zobrist_info, *mv, MoveFlag::AllMoves) {
+        if !moves::play(board, attack_info, *mv, MoveFlag::AllMoves) {
             info.ply -= 1;
             // Repetition stuff
             continue;
@@ -474,7 +474,7 @@ pub fn quiescence(
         info.ply += 1;
         // Repetition stuff
         // Make sure that every move from this point on is legal
-        if !moves::make(board, attack_info, zobrist_info, *mv, MoveFlag::CapturesOnly) {
+        if !moves::play(board, attack_info, *mv, MoveFlag::CapturesOnly) {
             info.ply -= 1;
             // Repetition stuff
             continue;

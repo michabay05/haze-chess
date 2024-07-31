@@ -1,8 +1,8 @@
 use crate::attack::AttackInfo;
 use crate::bb::{BBUtil, BB};
 use crate::consts::{Piece, PieceColor, Sq};
-use crate::fen;
-use crate::zobrist::ZobristInfo;
+use crate::{fen, zobrist};
+use crate::zobrist::{ZobristAction, ZobristInfo};
 use crate::SQ;
 
 #[derive(Clone)]
@@ -103,18 +103,29 @@ impl State {
 pub struct Board {
     pub pos: Position,
     pub state: State,
+    pub zobrist_info: ZobristInfo,
 }
 
 impl Board {
     pub fn new() -> Self {
-        Board {
+        let mut this = Board {
             pos: Position::new(),
             state: State::new(),
-        }
+            zobrist_info: ZobristInfo::new(),
+        };
+        this.zobrist_info.init();
+        this
     }
 
-    pub fn from_fen(fen: &str, zobrist_info: &ZobristInfo) -> Self {
-        fen::parse(fen, zobrist_info)
+    pub fn set_fen(&mut self, fen: &str) {
+        fen::parse(fen, self);
+    }
+
+    pub fn add_piece(self: &mut Self, piece: Option<Piece>, sq: Sq) {
+        if let Some(p) = piece {
+            self.pos.piece[p as usize].set(sq as usize);
+            zobrist::update(ZobristAction::TogglePiece(p, sq), self);
+        }
     }
 
     pub fn find_piece(&self, sq: usize) -> Option<Piece> {

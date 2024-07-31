@@ -1,7 +1,6 @@
-use crate::bb::BBUtil;
-use crate::board::{Board, CastlingType, Position};
+use crate::board::{Board, CastlingType};
 use crate::consts::{Piece, PieceColor, Sq};
-use crate::zobrist::{self, ZobristInfo};
+use crate::zobrist::{self, ZobristAction};
 
 pub const FEN_POSITIONS: [&str; 8] = [
     "8/8/8/8/8/8/8/8 w - - 0 1",
@@ -14,12 +13,11 @@ pub const FEN_POSITIONS: [&str; 8] = [
     "rnbqkb1r/pp1p1pPp/8/2p1pP2/1P1P4/3P3P/P1P1P3/RNBQKBNR w KQkq e6 0 1",
 ];
 
-pub fn parse(fen: &str, zobrist_info: &ZobristInfo) -> Board {
-    let mut board: Board = Board::new();
+pub fn parse(fen: &str, board: &mut Board) {
     let mut fen_parts = fen.split_ascii_whitespace();
 
     // Place piece on square
-    parse_pieces(fen_parts.next().unwrap(), &mut board.pos);
+    parse_pieces(fen_parts.next().unwrap(), board);
 
     // Set side to move
     let side_to_move_str: &str = fen_parts.next().unwrap();
@@ -27,6 +25,7 @@ pub fn parse(fen: &str, zobrist_info: &ZobristInfo) -> Board {
         board.state.side = PieceColor::Light;
     } else if side_to_move_str == "b" {
         board.state.side = PieceColor::Dark;
+        zobrist::update(ZobristAction::ChangeColor, board);
     }
 
     // Set castling right
@@ -49,42 +48,38 @@ pub fn parse(fen: &str, zobrist_info: &ZobristInfo) -> Board {
                 .toggle_castling(CastlingType::BlackQueenside as usize);
         }
     }
+    zobrist::update(ZobristAction::Castling, board);
 
     // Set enpassant square
     let enpass_square = fen_parts.next().unwrap();
     if enpass_square != "-" {
         board.state.enpassant = Sq::from_str(enpass_square);
     }
+    zobrist::update(ZobristAction::Enpassant, board);
     // Set 50 move rule
     let half_moves = fen_parts.next().unwrap().parse::<u32>().unwrap();
     board.state.half_moves = half_moves;
     // Set move counter
     let full_moves = fen_parts.next().unwrap().parse::<u32>().unwrap();
     board.state.full_moves = full_moves;
-
-    // Generate hash key and lock
-    board.state.key = zobrist::gen_board_key(&zobrist_info.key, &board);
-    board.state.lock = zobrist::gen_board_lock(&zobrist_info.lock, &board);
-
-    board
 }
 
-fn parse_pieces(fen_piece: &str, pos: &mut Position) {
-    let mut sq: u8 = 0;
+fn parse_pieces(fen_piece: &str, board: &mut Board) {
+    let mut sq: usize = 0;
     for piece_char in fen_piece.chars() {
         if piece_char == '/' {
             continue;
         } else if piece_char.is_ascii_digit() {
             // Retrieve the int value of the offset from the char value
-            let offset: u8 = piece_char as u8 - b'0';
+            let offset = piece_char as u8 - b'0';
             // Add offset value to square counter
-            sq += offset;
+            sq += offset as usize;
         } else if piece_char.is_ascii_alphabetic() {
             let (piece_color, _) = Piece::to_tuple(Piece::from_char(piece_char));
             if piece_color == PieceColor::Both as usize {
                 continue;
             }
-            pos.piece[Piece::from_char(piece_char).unwrap() as usize].set(sq as usize);
+            board.add_piece(Piece::from_char(piece_char), Sq::from_num(sq));
             // Increment the current square
             sq += 1;
         }

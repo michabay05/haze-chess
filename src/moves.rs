@@ -2,7 +2,7 @@ use crate::attack::AttackInfo;
 use crate::bb::BBUtil;
 use crate::board::{self, Board};
 use crate::consts::{Direction, Piece, PieceColor, Sq};
-use crate::zobrist::{self, ZobristAction, ZobristInfo};
+use crate::zobrist::{self, ZobristAction};
 
 pub type Move = u32;
 
@@ -132,10 +132,9 @@ const CASTLING_RIGHTS: [usize; 64] = [
     15, 15, 15, 15, 15, 15, 15, 15, 13, 15, 15, 15, 12, 15, 15, 14,
 ];
 
-pub fn make(
+pub fn play(
     main: &mut Board,
     attack_info: &AttackInfo,
-    zobrist_info: &ZobristInfo,
     mv: Move,
     move_flag: MoveFlag,
 ) -> bool {
@@ -158,12 +157,10 @@ pub fn make(
 
         // Update hash key and lock
         zobrist::update(
-            zobrist_info,
             ZobristAction::TogglePiece(Piece::from_num(piece).unwrap(), Sq::from_num(source)),
             main,
         );
         zobrist::update(
-            zobrist_info,
             ZobristAction::TogglePiece(Piece::from_num(piece).unwrap(), Sq::from_num(target)),
             main,
         );
@@ -178,7 +175,6 @@ pub fn make(
                 if main.pos.piece[bb_piece].get(target) {
                     main.pos.piece[bb_piece].pop(target);
                     zobrist::update(
-                        zobrist_info,
                         ZobristAction::TogglePiece(
                             Piece::from_num(bb_piece).unwrap(),
                             Sq::from_num(target),
@@ -196,14 +192,12 @@ pub fn make(
             let pawn_type = if piece == 0 { Piece::LP } else { Piece::DP } as usize;
             main.pos.piece[pawn_type].pop(target);
             zobrist::update(
-                zobrist_info,
                 ZobristAction::TogglePiece(Piece::from_num(pawn_type).unwrap(), Sq::from_num(target)),
                 main,
             );
 
             main.pos.piece[promoted_num].set(target);
             zobrist::update(
-                zobrist_info,
                 ZobristAction::TogglePiece(
                     Piece::from_num(promoted_num).unwrap(),
                     Sq::from_num(target),
@@ -224,15 +218,13 @@ pub fn make(
             }
             main.pos.piece[pawn_type as usize].pop((target as i32 + direction as i32) as usize);
             zobrist::update(
-                zobrist_info,
                 ZobristAction::TogglePiece(pawn_type, Sq::from_num((target as i32 + direction as i32) as usize)),
                 main,
             );
         }
         if main.state.enpassant != Sq::NoSq {
             zobrist::update(
-                zobrist_info,
-                ZobristAction::SetEnpassant(main.state.enpassant),
+                ZobristAction::Enpassant,
                 main,
             );
         }
@@ -247,8 +239,7 @@ pub fn make(
                     Sq::from_num((target as i32 + Direction::South as i32) as usize);
             }
             zobrist::update(
-                zobrist_info,
-                ZobristAction::SetEnpassant(main.state.enpassant),
+                ZobristAction::Enpassant,
                 main,
             );
         }
@@ -282,27 +273,24 @@ pub fn make(
             };
             main.pos.piece[rook_type as usize].pop(source_castling as usize);
             zobrist::update(
-                zobrist_info,
                 ZobristAction::TogglePiece(rook_type, source_castling),
                 main,
             );
 
             main.pos.piece[rook_type as usize].set(target_castling as usize);
             zobrist::update(
-                zobrist_info,
                 ZobristAction::TogglePiece(rook_type, target_castling),
                 main,
             );
         }
 
-        zobrist::update(zobrist_info, ZobristAction::Castling, main);
+        zobrist::update(ZobristAction::Castling, main);
         main.state.castling &= CASTLING_RIGHTS[source] as u8;
         main.state.castling &= CASTLING_RIGHTS[target] as u8;
-        zobrist::update(zobrist_info, ZobristAction::Castling, main);
+        zobrist::update(ZobristAction::Castling, main);
 
         main.state.change_side();
         zobrist::update(
-            zobrist_info,
             ZobristAction::ChangeColor,
             main,
         );
@@ -334,7 +322,7 @@ pub fn make(
             true
         }
     } else if mv.is_capture() {
-        make(main, attack_info, zobrist_info, mv, MoveFlag::AllMoves)
+        play(main, attack_info, mv, MoveFlag::AllMoves)
     } else {
         false
     }

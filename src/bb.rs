@@ -8,6 +8,7 @@ pub trait BBUtil {
     fn pop(&mut self, ind: usize);
     fn lsb(&self) -> usize;
     fn pop_lsb(&mut self) -> usize;
+    #[allow(dead_code)]
     fn print(&self);
 }
 
