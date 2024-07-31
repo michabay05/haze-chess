@@ -1,0 +1,28 @@
+:root {
+    --body-bkgd: #181818ff;
+    --font-primary: "Rubik", sans-serif;
+    --font-color: #efefefff;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background-color: var(--body-bkgd);
+
+    font-family: var(--font-primary);
+    color: var(--font-color);
+}
+
+h1 {
+    margin-top: 1em;
+    text-align: center;
+}
+
+h3 {
+    margin-top: 2em;
+    text-align: center;
+}
