@@ -8,24 +8,33 @@ use crate::SQ;
 #[derive(Clone)]
 pub struct Position {
     pub piece: [BB; 12],
-    pub units: [BB; 3],
 }
 
 impl Position {
     pub fn new() -> Self {
-        Position {
-            piece: [0; 12],
-            units: [0; 3],
-        }
+        Position { piece: [0; 12] }
     }
 
-    pub fn update_units(&mut self) {
-        self.units.fill(0);
-        for i in 0..12 {
-            self.units[i / 6] |= self.piece[i];
+    pub fn units(&self, color: PieceColor) -> BB {
+        match color {
+            PieceColor::Light => {
+                self.piece[Piece::LP as usize]
+                    | self.piece[Piece::LN as usize]
+                    | self.piece[Piece::LB as usize]
+                    | self.piece[Piece::LR as usize]
+                    | self.piece[Piece::LQ as usize]
+                    | self.piece[Piece::LK as usize]
+            }
+            PieceColor::Dark => {
+                self.piece[Piece::DP as usize]
+                    | self.piece[Piece::DN as usize]
+                    | self.piece[Piece::DB as usize]
+                    | self.piece[Piece::DR as usize]
+                    | self.piece[Piece::DQ as usize]
+                    | self.piece[Piece::DK as usize]
+            }
+            PieceColor::Both => self.units(PieceColor::Light) | self.units(PieceColor::Dark),
         }
-        self.units[PieceColor::Both as usize] =
-            self.units[PieceColor::Light as usize] | self.units[PieceColor::Dark as usize];
     }
 }
 
@@ -138,7 +147,7 @@ impl Board {
             }
         );
         self.print_castling();
-        println!( "         Enpassant: {}", self.state.enpassant);
+        println!("         Enpassant: {}", self.state.enpassant);
         println!("        Full Moves: {}\n", self.state.full_moves);
     }
 
@@ -183,6 +192,7 @@ impl Board {
 
 pub fn sq_attacked(pos: &Position, attack_info: &AttackInfo, sq: Sq, side: PieceColor) -> bool {
     assert!(side != PieceColor::Both);
+    let both_units = pos.units(PieceColor::Both);
     if side == PieceColor::Light
         && ((attack_info.pawn[PieceColor::Dark as usize][sq as usize]
             & pos.piece[Piece::LP as usize])
@@ -200,22 +210,13 @@ pub fn sq_attacked(pos: &Position, attack_info: &AttackInfo, sq: Sq, side: Piece
     if (attack_info.knight[sq as usize] & pos.piece[(side as usize) * 6 + 1]) != 0 {
         return true;
     }
-    if (attack_info.get_bishop_attack(sq, pos.units[PieceColor::Both as usize])
-        & pos.piece[(side as usize) * 6 + 2])
-        != 0
-    {
+    if (attack_info.get_bishop_attack(sq, both_units) & pos.piece[(side as usize) * 6 + 2]) != 0 {
         return true;
     }
-    if (attack_info.get_rook_attack(sq, pos.units[PieceColor::Both as usize])
-        & pos.piece[(side as usize) * 6 + 3])
-        != 0
-    {
+    if (attack_info.get_rook_attack(sq, both_units) & pos.piece[(side as usize) * 6 + 3]) != 0 {
         return true;
     }
-    if (attack_info.get_queen_attack(sq, pos.units[PieceColor::Both as usize])
-        & pos.piece[(side as usize) * 6 + 4])
-        != 0
-    {
+    if (attack_info.get_queen_attack(sq, both_units) & pos.piece[(side as usize) * 6 + 4]) != 0 {
         return true;
     }
     if (attack_info.king[sq as usize] & pos.piece[(side as usize) * 6 + 5]) != 0 {

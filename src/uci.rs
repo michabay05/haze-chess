@@ -27,10 +27,13 @@ pub struct UCIState {
 
 pub fn get_curr_time() -> u128 {
     let start = SystemTime::now();
-    let since_the_epoch = start.duration_since(SystemTime::UNIX_EPOCH).unwrap_or_else(|e: SystemTimeError| {
-        eprintln!("ERROR: System time error\n{}", e);
-        Duration::default()
-    });
+    let since_the_epoch =
+        start
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .unwrap_or_else(|e: SystemTimeError| {
+                eprintln!("ERROR: System time error\n{}", e);
+                Duration::default()
+            });
     since_the_epoch.as_millis()
 }
 
@@ -211,8 +214,8 @@ fn parse_go(engine: &mut Engine, args: &str) {
     let first_ind = split_by_first_space(args);
 
     if &args[0..first_ind] == "perft" {
-        let second_ind = split_by_first_space(&args[first_ind..]);
-        let perft_depth: usize = if let Ok(val) = (&args[0..second_ind]).parse() {
+        let depth_str = &args[first_ind..].trim();
+        let perft_depth: usize = if let Ok(val) = depth_str.parse() {
             val
         } else {
             10

@@ -62,9 +62,6 @@ pub fn parse(fen: &str, zobrist_info: &ZobristInfo) -> Board {
     let full_moves = fen_parts.next().unwrap().parse::<u32>().unwrap();
     board.state.full_moves = full_moves;
 
-    // Update units bitboard from piece bitboard
-    board.pos.update_units();
-
     // Generate hash key and lock
     board.state.key = zobrist::gen_board_key(&zobrist_info.key, &board);
     board.state.lock = zobrist::gen_board_lock(&zobrist_info.lock, &board);

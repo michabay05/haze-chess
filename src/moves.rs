@@ -300,8 +300,6 @@ pub fn make(
         main.state.castling &= CASTLING_RIGHTS[target] as u8;
         zobrist::update(zobrist_info, ZobristAction::Castling, main);
 
-        main.pos.update_units();
-
         main.state.change_side();
         zobrist::update(
             zobrist_info,

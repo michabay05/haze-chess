@@ -203,13 +203,14 @@ fn eval_light_pieces(
         }
 
         Piece::LB => {
+            let both_units = pos.units(PieceColor::Both);
             *opening += (attack_info
-                .get_bishop_attack(Sq::from_num(sq), pos.units[PieceColor::Both as usize])
+                .get_bishop_attack(Sq::from_num(sq), both_units)
                 .count_ones() as i32
                 - BISHOP_UNIT)
                 * BISHOP_MOBILITY_BONUS[Phase::Opening as usize];
             *endgame += (attack_info
-                .get_bishop_attack(Sq::from_num(sq), pos.units[PieceColor::Both as usize])
+                .get_bishop_attack(Sq::from_num(sq), both_units)
                 .count_ones() as i32
                 - BISHOP_UNIT)
                 * BISHOP_MOBILITY_BONUS[Phase::Endgame as usize];
@@ -229,13 +230,14 @@ fn eval_light_pieces(
         }
 
         Piece::LQ => {
+            let both_units = pos.units(PieceColor::Both);
             *opening += (attack_info
-                .get_queen_attack(Sq::from_num(sq), pos.units[PieceColor::Both as usize])
+                .get_queen_attack(Sq::from_num(sq), both_units)
                 .count_ones() as i32
                 - QUEEN_UNIT)
                 * QUEEN_MOBILITY_BONUS[Phase::Opening as usize];
             *endgame += (attack_info
-                .get_queen_attack(Sq::from_num(sq), pos.units[PieceColor::Both as usize])
+                .get_queen_attack(Sq::from_num(sq), both_units)
                 .count_ones() as i32
                 - QUEEN_UNIT)
                 * QUEEN_MOBILITY_BONUS[Phase::Endgame as usize];
@@ -255,10 +257,11 @@ fn eval_light_pieces(
                 *endgame -= OPEN_FILE_BONUS;
             }
             // King safety bonus
-            *opening += (attack_info.king[sq] & pos.units[PieceColor::Light as usize]).count_ones()
+            let light_units = pos.units(PieceColor::Light);
+            *opening += (attack_info.king[sq] & light_units).count_ones()
                 as i32
                 * KING_SHIELD_BONUS;
-            *endgame += (attack_info.king[sq] & pos.units[PieceColor::Light as usize]).count_ones()
+            *endgame += (attack_info.king[sq] & light_units).count_ones()
                 as i32
                 * KING_SHIELD_BONUS;
         }
@@ -294,13 +297,14 @@ fn eval_dark_pieces(
         }
 
         Piece::DB => {
+            let both_units = pos.units(PieceColor::Both);
             *opening -= (attack_info
-                .get_bishop_attack(Sq::from_num(sq), pos.units[PieceColor::Both as usize])
+                .get_bishop_attack(Sq::from_num(sq), both_units)
                 .count_ones() as i32
                 - BISHOP_UNIT)
                 * BISHOP_MOBILITY_BONUS[Phase::Opening as usize];
             *endgame -= (attack_info
-                .get_bishop_attack(Sq::from_num(sq), pos.units[PieceColor::Both as usize])
+                .get_bishop_attack(Sq::from_num(sq), both_units)
                 .count_ones() as i32
                 - BISHOP_UNIT)
                 * BISHOP_MOBILITY_BONUS[Phase::Endgame as usize];
@@ -320,13 +324,14 @@ fn eval_dark_pieces(
         }
 
         Piece::DQ => {
+            let both_units = pos.units(PieceColor::Both);
             *opening -= (attack_info
-                .get_queen_attack(Sq::from_num(sq), pos.units[PieceColor::Both as usize])
+                .get_queen_attack(Sq::from_num(sq), both_units)
                 .count_ones() as i32
                 - QUEEN_UNIT)
                 * QUEEN_MOBILITY_BONUS[Phase::Opening as usize];
             *endgame -= (attack_info
-                .get_queen_attack(Sq::from_num(sq), pos.units[PieceColor::Both as usize])
+                .get_queen_attack(Sq::from_num(sq), both_units)
                 .count_ones() as i32
                 - QUEEN_UNIT)
                 * QUEEN_MOBILITY_BONUS[Phase::Endgame as usize];
@@ -346,10 +351,11 @@ fn eval_dark_pieces(
                 *endgame += OPEN_FILE_BONUS;
             }
             // King safety bonus
-            *opening -= (attack_info.king[sq] & pos.units[PieceColor::Dark as usize]).count_ones()
+            let dark_units = pos.units(PieceColor::Dark);
+            *opening -= (attack_info.king[sq] & dark_units).count_ones()
                 as i32
                 * KING_SHIELD_BONUS;
-            *endgame -= (attack_info.king[sq] & pos.units[PieceColor::Dark as usize]).count_ones()
+            *endgame -= (attack_info.king[sq] & dark_units).count_ones()
                 as i32
                 * KING_SHIELD_BONUS;
         }

@@ -93,7 +93,7 @@ fn generate_pawns(board: &Board, attack_info: &AttackInfo, ml: &mut MoveList) {
         } else {
             target <= enemy_rank_start as i32
         };
-        if are_pawns_in_bound && !board.pos.units[PieceColor::Both as usize].get(target as usize) {
+        if are_pawns_in_bound && !board.pos.units(PieceColor::Both).get(target as usize) {
             // If true, this move is a promotion
             if (source >= promotion_start as i32) && (source <= (promotion_start as i32 + 7)) {
                 let ind = if is_white { 0 } else { 1 };
@@ -124,7 +124,9 @@ fn generate_pawns(board: &Board, attack_info: &AttackInfo, ml: &mut MoveList) {
                 let source_is_in_bound = (source >= twosquarepush_start as i32)
                     && (source <= (twosquarepush_start as i32 + 7));
                 if source_is_in_bound
-                    && !board.pos.units[PieceColor::Both as usize]
+                    && !board
+                        .pos
+                        .units(PieceColor::Both)
                         .get((target + (direction as i32)) as usize)
                 {
                     ml.moves.push(Move::encode(
@@ -142,7 +144,7 @@ fn generate_pawns(board: &Board, attack_info: &AttackInfo, ml: &mut MoveList) {
         }
 
         attack_copy = attack_info.pawn[board.state.side as usize][source as usize]
-            & board.pos.units[enemy_color as usize];
+            & board.pos.units(enemy_color);
         while attack_copy > 0 {
             target = attack_copy.pop_lsb() as i32;
             if (source >= promotion_start as i32) && (source <= (promotion_start as i32 + 7)) {
@@ -215,10 +217,10 @@ fn generate_knights(board: &Board, attack_info: &AttackInfo, ml: &mut MoveList) 
 
     while bb_copy > 0 {
         source = bb_copy.pop_lsb();
-        attack_copy = attack_info.knight[source] & (!board.pos.units[color as usize]);
+        attack_copy = attack_info.knight[source] & (!board.pos.units(color));
         while attack_copy > 0 {
             target = attack_copy.pop_lsb();
-            let is_capture_move = board.pos.units[enemy_color as usize].get(target);
+            let is_capture_move = board.pos.units(enemy_color).get(target);
             ml.moves.push(Move::encode(
                 Sq::from_num(source),
                 Sq::from_num(target),
@@ -253,13 +255,12 @@ fn generate_bishops(board: &Board, attack_info: &AttackInfo, ml: &mut MoveList) 
 
     while bb_copy > 0 {
         source = bb_copy.pop_lsb();
-        attack_copy = attack_info.get_bishop_attack(
-            Sq::from_num(source),
-            board.pos.units[PieceColor::Both as usize],
-        ) & (!board.pos.units[color as usize]);
+        attack_copy = attack_info
+            .get_bishop_attack(Sq::from_num(source), board.pos.units(PieceColor::Both))
+            & (!board.pos.units(color));
         while attack_copy > 0 {
             target = attack_copy.pop_lsb();
-            let is_capture_move = board.pos.units[enemy_color as usize].get(target);
+            let is_capture_move = board.pos.units(enemy_color).get(target);
             ml.moves.push(Move::encode(
                 Sq::from_num(source),
                 Sq::from_num(target),
@@ -294,13 +295,12 @@ fn generate_rooks(board: &Board, attack_info: &AttackInfo, ml: &mut MoveList) {
 
     while bb_copy > 0 {
         source = bb_copy.pop_lsb();
-        attack_copy = attack_info.get_rook_attack(
-            Sq::from_num(source),
-            board.pos.units[PieceColor::Both as usize],
-        ) & (!board.pos.units[color as usize]);
+        attack_copy = attack_info
+            .get_rook_attack(Sq::from_num(source), board.pos.units(PieceColor::Both))
+            & (!board.pos.units(color));
         while attack_copy > 0 {
             target = attack_copy.pop_lsb();
-            let is_capture_move = board.pos.units[enemy_color as usize].get(target);
+            let is_capture_move = board.pos.units(enemy_color).get(target);
             ml.moves.push(Move::encode(
                 Sq::from_num(source),
                 Sq::from_num(target),
@@ -335,13 +335,12 @@ fn generate_queens(board: &Board, attack_info: &AttackInfo, ml: &mut MoveList) {
 
     while bb_copy > 0 {
         source = bb_copy.pop_lsb();
-        attack_copy = attack_info.get_queen_attack(
-            Sq::from_num(source),
-            board.pos.units[PieceColor::Both as usize],
-        ) & (!board.pos.units[color as usize]);
+        attack_copy = attack_info
+            .get_queen_attack(Sq::from_num(source), board.pos.units(PieceColor::Both))
+            & (!board.pos.units(color));
         while attack_copy > 0 {
             target = attack_copy.pop_lsb();
-            let is_capture_move = board.pos.units[enemy_color as usize].get(target);
+            let is_capture_move = board.pos.units(enemy_color).get(target);
             ml.moves.push(Move::encode(
                 Sq::from_num(source),
                 Sq::from_num(target),
@@ -376,10 +375,10 @@ fn generate_kings(board: &Board, attack_info: &AttackInfo, ml: &mut MoveList) {
 
     while bb_copy > 0 {
         source = bb_copy.pop_lsb();
-        attack_copy = attack_info.king[source] & (!board.pos.units[color as usize]);
+        attack_copy = attack_info.king[source] & (!board.pos.units(color));
         while attack_copy > 0 {
             target = attack_copy.pop_lsb();
-            let is_capture_move = board.pos.units[enemy_color as usize].get(target);
+            let is_capture_move = board.pos.units(enemy_color).get(target);
             ml.moves.push(Move::encode(
                 Sq::from_num(source),
                 Sq::from_num(target),
@@ -401,10 +400,9 @@ fn generate_kings(board: &Board, attack_info: &AttackInfo, ml: &mut MoveList) {
 
 fn gen_light_castling(board: &Board, attack_info: &AttackInfo, ml: &mut MoveList) {
     let castling = board.state.castling as BB;
+    let both_units = board.pos.units(PieceColor::Both);
     if castling.get(CastlingType::WhiteKingside as usize) {
-        if !board.pos.units[PieceColor::Both as usize].get(Sq::F1 as usize)
-            && !board.pos.units[PieceColor::Both as usize].get(Sq::G1 as usize)
-        {
+        if !both_units.get(Sq::F1 as usize) && !both_units.get(Sq::G1 as usize) {
             if !board::sq_attacked(&board.pos, attack_info, Sq::E1, PieceColor::Dark)
                 && !board::sq_attacked(&board.pos, attack_info, Sq::F1, PieceColor::Dark)
             {
@@ -415,9 +413,9 @@ fn gen_light_castling(board: &Board, attack_info: &AttackInfo, ml: &mut MoveList
     }
 
     if castling.get(CastlingType::WhiteQueenside as usize) {
-        if !board.pos.units[PieceColor::Both as usize].get(Sq::B1 as usize)
-            && !board.pos.units[PieceColor::Both as usize].get(Sq::C1 as usize)
-            && !board.pos.units[PieceColor::Both as usize].get(Sq::D1 as usize)
+        if !both_units.get(Sq::B1 as usize)
+            && !both_units.get(Sq::C1 as usize)
+            && !both_units.get(Sq::D1 as usize)
         {
             if !board::sq_attacked(&board.pos, attack_info, Sq::D1, PieceColor::Dark)
                 && !board::sq_attacked(&board.pos, attack_info, Sq::E1, PieceColor::Dark)
@@ -431,10 +429,9 @@ fn gen_light_castling(board: &Board, attack_info: &AttackInfo, ml: &mut MoveList
 
 fn gen_dark_castling(board: &Board, attack_info: &AttackInfo, ml: &mut MoveList) {
     let castling = board.state.castling as BB;
+    let both_units = board.pos.units(PieceColor::Both);
     if castling.get(CastlingType::BlackKingside as usize) {
-        if !board.pos.units[PieceColor::Both as usize].get(Sq::F8 as usize)
-            && !board.pos.units[PieceColor::Both as usize].get(Sq::G8 as usize)
-        {
+        if !both_units.get(Sq::F8 as usize) && !both_units.get(Sq::G8 as usize) {
             if !board::sq_attacked(&board.pos, attack_info, Sq::E8, PieceColor::Light)
                 && !board::sq_attacked(&board.pos, attack_info, Sq::F8, PieceColor::Light)
             {
@@ -445,9 +442,9 @@ fn gen_dark_castling(board: &Board, attack_info: &AttackInfo, ml: &mut MoveList)
     }
 
     if castling.get(CastlingType::BlackQueenside as usize) {
-        if !board.pos.units[PieceColor::Both as usize].get(Sq::B8 as usize)
-            && !board.pos.units[PieceColor::Both as usize].get(Sq::C8 as usize)
-            && !board.pos.units[PieceColor::Both as usize].get(Sq::D8 as usize)
+        if !both_units.get(Sq::B8 as usize)
+            && !both_units.get(Sq::C8 as usize)
+            && !both_units.get(Sq::D8 as usize)
         {
             if !board::sq_attacked(&board.pos, attack_info, Sq::D8, PieceColor::Light)
                 && !board::sq_attacked(&board.pos, attack_info, Sq::E8, PieceColor::Light)
