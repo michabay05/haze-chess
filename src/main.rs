@@ -20,7 +20,7 @@ use std::io::{self, Write};
 
 use engine::Engine;
 
-const VERSION: &str = "1.1";
+const VERSION: &str = "0.3";
 const NUM_OF_THREADS: usize = 1;
 
 fn main() {
