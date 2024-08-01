@@ -19,6 +19,11 @@ impl Position {
         }
     }
 
+    pub fn reset(&mut self) {
+        self.bitboards.fill(0);
+        self.mailbox.fill(None);
+    }
+
     pub fn units(&self, color: PieceColor) -> BB {
         match color {
             PieceColor::Light => {
@@ -82,6 +87,17 @@ impl State {
         }
     }
 
+    pub fn reset(&mut self) {
+        self.side = PieceColor::Light;
+        self.xside = PieceColor::Dark;
+        self.enpassant = Sq::NoSq;
+        self.castling = 0;
+        self.half_moves = 0;
+        self.full_moves = 0;
+        self.key = 0;
+        self.lock = 0;
+    }
+
     pub fn change_side(&mut self) {
         if self.side == PieceColor::Light {
             self.side = PieceColor::Dark;
@@ -122,6 +138,8 @@ impl Board {
     }
 
     pub fn set_fen(&mut self, fen: &str) {
+        self.pos.reset();
+        self.state.reset();
         fen::parse(fen, self);
     }
 

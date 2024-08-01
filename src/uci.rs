@@ -9,7 +9,7 @@ use crate::search::{self, MAX_SEARCH_PLY};
 use crate::threads;
 use crate::VERSION;
 
-use std::time::{Duration, SystemTime, SystemTimeError};
+use std::time::{Duration, Instant, SystemTime, SystemTimeError};
 
 pub struct UCIState {
     pub stop: bool,
@@ -218,11 +218,16 @@ fn parse_go(engine: &mut Engine, args: &str) {
         } else {
             10
         };
-        perft::test(
+        let start = Instant::now();
+        let nodes = perft::driver(
             &mut engine.board,
             &engine.attack_info,
             perft_depth,
+            engine.debug
         );
+        let dur = Instant::now().duration_since(start);
+        println!("   Nodes: {}", nodes);
+        println!("    Time: {}", dur.as_secs_f32());
         return;
     }
     handle_time(engine, args);
