@@ -1,6 +1,6 @@
 use crate::attack::AttackInfo;
 use crate::bb::BBUtil;
-use crate::board::{self, Board};
+use crate::board::Board;
 use crate::consts::{Direction, Piece, PieceColor, Sq};
 use crate::zobrist::{self, ZobristAction};
 
@@ -121,7 +121,7 @@ impl MoveUtil for Move {
 }
 
 #[derive(PartialEq)]
-pub enum MoveFlag {
+pub enum MoveType {
     AllMoves,
     CapturesOnly,
 }
@@ -132,13 +132,13 @@ const CASTLING_RIGHTS: [usize; 64] = [
     15, 15, 15, 15, 15, 15, 15, 15, 13, 15, 15, 15, 12, 15, 15, 14,
 ];
 
-pub fn play(
+pub fn play_move(
     main: &mut Board,
     attack_info: &AttackInfo,
     mv: Move,
-    move_flag: MoveFlag,
+    move_flag: MoveType,
 ) -> bool {
-    if move_flag == MoveFlag::AllMoves {
+    if move_flag == MoveType::AllMoves {
         let clone = main.clone();
 
         // Extract information about the move
@@ -152,8 +152,8 @@ pub fn play(
         let is_castling = mv.is_castling();
 
         // Move piece from source to target by removing source bit and turning on the target bit
-        main.pos.piece[piece].pop(source);
-        main.pos.piece[piece].set(target);
+        main.pos.bitboards[piece].pop(source);
+        main.pos.bitboards[piece].set(target);
 
         // Update hash key and lock
         zobrist::update(
@@ -172,8 +172,8 @@ pub fn play(
                 (Piece::LP as usize, Piece::LK as usize)
             };
             for bb_piece in start..=end {
-                if main.pos.piece[bb_piece].get(target) {
-                    main.pos.piece[bb_piece].pop(target);
+                if main.pos.bitboards[bb_piece].get(target) {
+                    main.pos.bitboards[bb_piece].pop(target);
                     zobrist::update(
                         ZobristAction::TogglePiece(
                             Piece::from_num(bb_piece).unwrap(),
@@ -190,13 +190,13 @@ pub fn play(
             assert!(piece == 0 || piece == 6);
             let promoted_num = Piece::to_num(promoted);
             let pawn_type = if piece == 0 { Piece::LP } else { Piece::DP } as usize;
-            main.pos.piece[pawn_type].pop(target);
+            main.pos.bitboards[pawn_type].pop(target);
             zobrist::update(
                 ZobristAction::TogglePiece(Piece::from_num(pawn_type).unwrap(), Sq::from_num(target)),
                 main,
             );
 
-            main.pos.piece[promoted_num].set(target);
+            main.pos.bitboards[promoted_num].set(target);
             zobrist::update(
                 ZobristAction::TogglePiece(
                     Piece::from_num(promoted_num).unwrap(),
@@ -216,7 +216,7 @@ pub fn play(
                 pawn_type = Piece::LP;
                 direction = Direction::South;
             }
-            main.pos.piece[pawn_type as usize].pop((target as i32 + direction as i32) as usize);
+            main.pos.bitboards[pawn_type as usize].pop((target as i32 + direction as i32) as usize);
             zobrist::update(
                 ZobristAction::TogglePiece(pawn_type, Sq::from_num((target as i32 + direction as i32) as usize)),
                 main,
@@ -271,13 +271,13 @@ pub fn play(
                 },
                 _ => unreachable!("Target castling square should only be [ G1, C1 ] for white and [ G8, C8 ] for black"),
             };
-            main.pos.piece[rook_type as usize].pop(source_castling as usize);
+            main.pos.bitboards[rook_type as usize].pop(source_castling as usize);
             zobrist::update(
                 ZobristAction::TogglePiece(rook_type, source_castling),
                 main,
             );
 
-            main.pos.piece[rook_type as usize].set(target_castling as usize);
+            main.pos.bitboards[rook_type as usize].set(target_castling as usize);
             zobrist::update(
                 ZobristAction::TogglePiece(rook_type, target_castling),
                 main,
@@ -311,7 +311,8 @@ pub fn play(
             lock_from_scratch
         );
          ============= FOR DEBUG PURPOSES ONLY =============== */
-        if board::in_check(main, attack_info, main.state.side) {
+        // if board::in_check(main, attack_info, main.state.side) {
+        if main.is_in_check(attack_info, main.state.side) {
             *main = clone;
             false
         } else {
@@ -322,7 +323,7 @@ pub fn play(
             true
         }
     } else if mv.is_capture() {
-        play(main, attack_info, mv, MoveFlag::AllMoves)
+        play_move(main, attack_info, mv, MoveType::AllMoves)
     } else {
         false
     }

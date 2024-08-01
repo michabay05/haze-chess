@@ -179,11 +179,11 @@ fn parse_moves(engine: &mut Engine, args: &str) {
             el.to_string()
         };
         if let Some(mv) = find_move(engine, &mv_str) {
-            moves::play(
+            moves::play_move(
                 &mut engine.board,
                 &engine.attack_info,
                 mv,
-                moves::MoveFlag::AllMoves,
+                moves::MoveType::AllMoves,
             );
         } else {
             eprintln!("Received '{mv_str}'. Unknown move.");

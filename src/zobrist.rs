@@ -119,7 +119,7 @@ pub fn gen_board_key(key: &ZobristKey, board: &Board) -> u64 {
     let mut final_key = 0;
     let mut bb_copy;
     for piece in 0..12 {
-        bb_copy = board.pos.piece[piece];
+        bb_copy = board.pos.bitboards[piece];
         while bb_copy != 0 {
             let sq = bb_copy.pop_lsb();
             final_key ^= key.piece[piece][sq];
@@ -142,7 +142,7 @@ pub fn gen_board_lock(lock: &ZobristLock, board: &Board) -> u64 {
     let mut final_lock = 0;
     let mut bb_copy;
     for piece in 0..12 {
-        bb_copy = board.pos.piece[piece];
+        bb_copy = board.pos.bitboards[piece];
         while bb_copy != 0 {
             let sq = bb_copy.pop_lsb();
             final_lock ^= lock.piece[piece][sq];

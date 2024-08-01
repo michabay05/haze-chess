@@ -81,7 +81,7 @@ fn generate_pawns(board: &Board, attack_info: &AttackInfo, ml: &mut MoveList) {
         direction = Direction::North;
     }
 
-    bb_copy = board.pos.piece[piece as usize];
+    bb_copy = board.pos.bitboards[piece as usize];
     let mut source: i32;
     let mut target: i32;
 
@@ -212,7 +212,7 @@ fn generate_knights(board: &Board, attack_info: &AttackInfo, ml: &mut MoveList) 
     } else {
         PieceColor::Light
     };
-    let mut bb_copy = board.pos.piece[piece as usize];
+    let mut bb_copy = board.pos.bitboards[piece as usize];
     let mut attack_copy;
 
     while bb_copy > 0 {
@@ -250,7 +250,7 @@ fn generate_bishops(board: &Board, attack_info: &AttackInfo, ml: &mut MoveList) 
     } else {
         PieceColor::Light
     };
-    let mut bb_copy = board.pos.piece[piece as usize];
+    let mut bb_copy = board.pos.bitboards[piece as usize];
     let mut attack_copy;
 
     while bb_copy > 0 {
@@ -290,7 +290,7 @@ fn generate_rooks(board: &Board, attack_info: &AttackInfo, ml: &mut MoveList) {
     } else {
         PieceColor::Light
     };
-    let mut bb_copy = board.pos.piece[piece as usize];
+    let mut bb_copy = board.pos.bitboards[piece as usize];
     let mut attack_copy;
 
     while bb_copy > 0 {
@@ -330,7 +330,7 @@ fn generate_queens(board: &Board, attack_info: &AttackInfo, ml: &mut MoveList) {
     } else {
         PieceColor::Light
     };
-    let mut bb_copy = board.pos.piece[piece as usize];
+    let mut bb_copy = board.pos.bitboards[piece as usize];
     let mut attack_copy;
 
     while bb_copy > 0 {
@@ -370,7 +370,7 @@ fn generate_kings(board: &Board, attack_info: &AttackInfo, ml: &mut MoveList) {
     } else {
         PieceColor::Light
     };
-    let mut bb_copy = board.pos.piece[piece as usize];
+    let mut bb_copy = board.pos.bitboards[piece as usize];
     let mut attack_copy;
 
     while bb_copy > 0 {

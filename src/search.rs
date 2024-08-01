@@ -1,15 +1,15 @@
 use crate::attack::AttackInfo;
 use crate::bb::BBUtil;
-use crate::board::{self, Board};
+use crate::board::Board;
 use crate::consts::{Piece, PieceColor, Sq};
 use crate::eval::{self, EvalMasks};
 use crate::engine::Engine;
 use crate::move_gen::{self, MoveList};
-use crate::moves::{self, Move, MoveFlag, MoveUtil};
+use crate::moves::{self, Move, MoveType, MoveUtil};
 use crate::threads;
 use crate::tt::{HashTT, TTFlag};
 use crate::uci::{self, UCIState};
-use crate::zobrist::{ZobristInfo, self, ZobristAction};
+use crate::zobrist::{self, ZobristAction};
 
 use std::sync::{Arc, RwLock};
 
@@ -81,7 +81,6 @@ pub struct SearchData {
     pub board: Board,
     pub eval_mask: EvalMasks,
     pub search_info: SearchInfo,
-    pub zobrist_info: ZobristInfo,
     pub uci_state: Arc<RwLock<UCIState>>,
 }
 
@@ -92,7 +91,6 @@ impl SearchData {
             board: engine.board.clone(),
             eval_mask: engine.eval_mask.clone(),
             search_info: engine.search_info.clone(),
-            zobrist_info: engine.board.zobrist_info.clone(),
             uci_state: Arc::clone(&engine.uci_state),
         }
     }
@@ -135,7 +133,6 @@ pub fn worker_search_pos(mut data: SearchData, depth: u32, worker_id: usize) {
             &data.attack_info,
             &data.eval_mask,
             &data.uci_state,
-            &data.zobrist_info,
             alpha,
             beta,
             current_depth,
@@ -188,7 +185,6 @@ fn negamax(
     attack_info: &AttackInfo,
     mask: &EvalMasks,
     uci_state: &Arc<RwLock<UCIState>>,
-    zobrist_info: &ZobristInfo,
     mut alpha: i32,
     beta: i32,
     mut depth: u32,
@@ -220,7 +216,7 @@ fn negamax(
 
     // Escape condition or Base case
     if depth == 0 {
-        return quiescence(info, board, attack_info, mask, uci_state, zobrist_info, alpha, beta);
+        return quiescence(info, board, attack_info, mask, uci_state, alpha, beta);
     }
     // Exit if ply > max ply; ply should be <= 63
     if info.ply > (MAX_SEARCH_PLY - 1) as u32 {
@@ -230,7 +226,7 @@ fn negamax(
     info.nodes += 1;
 
     // Check extension
-    let in_check =  board::in_check(board, attack_info, board.state.xside);
+    let in_check =  board.is_in_check(attack_info, board.state.xside);
     if in_check {
         depth += 1;
     }
@@ -254,7 +250,6 @@ fn negamax(
             attack_info,
             mask,
             uci_state,
-            zobrist_info,
             -beta,
             -beta + 1,
             depth - 1 - 2,
@@ -287,7 +282,7 @@ fn negamax(
         info.ply += 1;
         // Repetition stuff
         // Make sure that every move from this point on is legal
-        if !moves::play(board, attack_info, *mv, MoveFlag::AllMoves) {
+        if !moves::play_move(board, attack_info, *mv, MoveType::AllMoves) {
             info.ply -= 1;
             // Repetition stuff
             continue;
@@ -302,7 +297,6 @@ fn negamax(
                 attack_info,
                 mask,
                 uci_state,
-                zobrist_info,
                 -beta,
                 -alpha,
                 depth - 1,
@@ -321,7 +315,6 @@ fn negamax(
                     attack_info,
                     mask,
                     uci_state,
-                    zobrist_info,
                     -alpha - 1,
                     -alpha,
                     depth - 2,
@@ -339,7 +332,6 @@ fn negamax(
                     attack_info,
                     mask,
                     uci_state,
-                    zobrist_info,
                     -alpha - 1,
                     -alpha,
                     depth - 1,
@@ -352,7 +344,6 @@ fn negamax(
                         attack_info,
                         mask,
                         uci_state,
-                        zobrist_info,
                         -beta,
                         -alpha,
                         depth - 1,
@@ -436,7 +427,6 @@ pub fn quiescence(
     attack_info: &AttackInfo,
     mask: &EvalMasks,
     uci_state: &Arc<RwLock<UCIState>>,
-    zobrist_info: &ZobristInfo,
     mut alpha: i32,
     beta: i32,
 ) -> i32 {
@@ -474,12 +464,12 @@ pub fn quiescence(
         info.ply += 1;
         // Repetition stuff
         // Make sure that every move from this point on is legal
-        if !moves::play(board, attack_info, *mv, MoveFlag::CapturesOnly) {
+        if !moves::play_move(board, attack_info, *mv, MoveType::CapturesOnly) {
             info.ply -= 1;
             // Repetition stuff
             continue;
         }
-        let score = -quiescence(info, board, attack_info, mask, uci_state, zobrist_info, -beta, -alpha);
+        let score = -quiescence(info, board, attack_info, mask, uci_state, -beta, -alpha);
         info.ply -= 1;
         // Repetition stuff
         *board = clone;
@@ -522,7 +512,7 @@ fn score_move(info: &mut SearchInfo, board: &mut Board, mv: Move) -> u32 {
             (Piece::LP as usize, Piece::LK as usize)
         };
         for i in start..=end {
-            if board.pos.piece[i].get(mv.target() as usize) {
+            if board.pos.bitboards[i].get(mv.target() as usize) {
                 captured = i;
                 break;
             }

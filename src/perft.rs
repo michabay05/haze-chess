@@ -1,7 +1,7 @@
 use crate::attack::AttackInfo;
 use crate::board::Board;
 use crate::move_gen::{self, MoveList};
-use crate::moves::{self, MoveFlag, MoveUtil};
+use crate::moves::{self, MoveType, MoveUtil};
 
 fn driver(
     board: &mut Board,
@@ -19,7 +19,7 @@ fn driver(
     let mut clone;
     for mv in &ml.moves {
         clone = board.clone();
-        if !moves::play(board, attack_info, *mv, MoveFlag::AllMoves) {
+        if !moves::play_move(board, attack_info, *mv, MoveType::AllMoves) {
             continue;
         }
         driver(board, attack_info, depth - 1, node_count);
@@ -35,7 +35,7 @@ pub fn test(board: &mut Board, attack_info: &AttackInfo, depth: usize) {
     let mut clone;
     for mv in &ml.moves {
         clone = board.clone();
-        if !moves::play(board, attack_info, *mv, MoveFlag::AllMoves) {
+        if !moves::play_move(board, attack_info, *mv, MoveType::AllMoves) {
             continue;
         }
         // Nodes searched so far

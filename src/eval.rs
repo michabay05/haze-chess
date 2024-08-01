@@ -82,10 +82,10 @@ fn get_phase_score(pos: &Position) -> i32 {
     let mut black_piece_score = 0;
     for piece in (Piece::LN as usize)..=(Piece::LQ as usize) {
         white_piece_score +=
-            pos.piece[piece].count_ones() as i32 * MATERIAL_SCORES[Phase::Opening as usize][piece];
+            pos.bitboards[piece].count_ones() as i32 * MATERIAL_SCORES[Phase::Opening as usize][piece];
     }
     for piece in (Piece::DN as usize)..=(Piece::DQ as usize) {
-        black_piece_score += pos.piece[piece].count_ones() as i32
+        black_piece_score += pos.bitboards[piece].count_ones() as i32
             * -MATERIAL_SCORES[Phase::Opening as usize][piece];
     }
     white_piece_score + black_piece_score
@@ -112,7 +112,7 @@ pub fn evaluate(
     let mut sq;
 
     for piece in (Piece::LP as usize)..=(Piece::DK as usize) {
-        bb_copy = pos.piece[piece];
+        bb_copy = pos.bitboards[piece];
         while bb_copy != 0 {
             sq = bb_copy.pop_lsb();
 
@@ -187,16 +187,16 @@ fn eval_light_pieces(
     match white_piece {
         Piece::LP => {
             let num_of_doubled_pawns =
-                (pos.piece[Piece::LP as usize] & mask.file[sq]).count_ones() as i32 - 1;
+                (pos.bitboards[Piece::LP as usize] & mask.file[sq]).count_ones() as i32 - 1;
             if num_of_doubled_pawns > 0 {
                 *opening += num_of_doubled_pawns * DOUBLED_PAWN_PENALTY[Phase::Opening as usize];
                 *endgame += num_of_doubled_pawns * DOUBLED_PAWN_PENALTY[Phase::Endgame as usize];
             }
-            if (pos.piece[Piece::LP as usize] & mask.isolated[sq]) == 0 {
+            if (pos.bitboards[Piece::LP as usize] & mask.isolated[sq]) == 0 {
                 *opening += ISOLATED_PAWN_PENALTY[Phase::Opening as usize];
                 *endgame += ISOLATED_PAWN_PENALTY[Phase::Endgame as usize];
             }
-            if (pos.piece[Piece::DP as usize] & mask.passed[PieceColor::Light as usize][sq]) == 0 {
+            if (pos.bitboards[Piece::DP as usize] & mask.passed[PieceColor::Light as usize][sq]) == 0 {
                 *opening += PASSED_PAWN_BONUS[7 - ROW!(sq)];
                 *endgame += PASSED_PAWN_BONUS[7 - ROW!(sq)];
             }
@@ -217,11 +217,11 @@ fn eval_light_pieces(
         }
 
         Piece::LR => {
-            if (pos.piece[Piece::LP as usize] & mask.file[sq]) == 0 {
+            if (pos.bitboards[Piece::LP as usize] & mask.file[sq]) == 0 {
                 *opening += SEMI_OPEN_FILE_BONUS;
                 *endgame += SEMI_OPEN_FILE_BONUS;
             }
-            if ((pos.piece[Piece::LP as usize] | pos.piece[Piece::DP as usize]) & mask.file[sq])
+            if ((pos.bitboards[Piece::LP as usize] | pos.bitboards[Piece::DP as usize]) & mask.file[sq])
                 == 0
             {
                 *opening += OPEN_FILE_BONUS;
@@ -244,12 +244,12 @@ fn eval_light_pieces(
         }
 
         Piece::LK => {
-            if (pos.piece[Piece::LP as usize] & mask.file[sq]) == 0 {
+            if (pos.bitboards[Piece::LP as usize] & mask.file[sq]) == 0 {
                 // Semi open file penalty
                 *opening -= SEMI_OPEN_FILE_BONUS;
                 *endgame -= SEMI_OPEN_FILE_BONUS;
             }
-            if ((pos.piece[Piece::LP as usize] | pos.piece[Piece::DP as usize]) & mask.file[sq])
+            if ((pos.bitboards[Piece::LP as usize] | pos.bitboards[Piece::DP as usize]) & mask.file[sq])
                 == 0
             {
                 // Open file penalty
@@ -281,16 +281,16 @@ fn eval_dark_pieces(
     match black_piece {
         Piece::DP => {
             let num_of_doubled_pawns =
-                (pos.piece[Piece::DP as usize] & mask.file[FLIP_SQ!(sq)]).count_ones() as i32 - 1;
+                (pos.bitboards[Piece::DP as usize] & mask.file[FLIP_SQ!(sq)]).count_ones() as i32 - 1;
             if num_of_doubled_pawns > 0 {
                 *opening -= num_of_doubled_pawns * DOUBLED_PAWN_PENALTY[Phase::Opening as usize];
                 *endgame -= num_of_doubled_pawns * DOUBLED_PAWN_PENALTY[Phase::Endgame as usize];
             }
-            if (pos.piece[Piece::DP as usize] & mask.isolated[sq]) == 0 {
+            if (pos.bitboards[Piece::DP as usize] & mask.isolated[sq]) == 0 {
                 *opening -= ISOLATED_PAWN_PENALTY[Phase::Opening as usize];
                 *endgame -= ISOLATED_PAWN_PENALTY[Phase::Endgame as usize];
             }
-            if (pos.piece[Piece::LP as usize] & mask.passed[PieceColor::Dark as usize][sq]) == 0 {
+            if (pos.bitboards[Piece::LP as usize] & mask.passed[PieceColor::Dark as usize][sq]) == 0 {
                 *opening -= PASSED_PAWN_BONUS[7 - ROW!(sq)];
                 *endgame -= PASSED_PAWN_BONUS[7 - ROW!(sq)];
             }
@@ -311,11 +311,11 @@ fn eval_dark_pieces(
         }
 
         Piece::DR => {
-            if (pos.piece[Piece::DP as usize] & mask.file[sq]) == 0 {
+            if (pos.bitboards[Piece::DP as usize] & mask.file[sq]) == 0 {
                 *opening -= SEMI_OPEN_FILE_BONUS;
                 *endgame -= SEMI_OPEN_FILE_BONUS;
             }
-            if ((pos.piece[Piece::LP as usize] | pos.piece[Piece::DP as usize]) & mask.file[sq])
+            if ((pos.bitboards[Piece::LP as usize] | pos.bitboards[Piece::DP as usize]) & mask.file[sq])
                 == 0
             {
                 *opening -= OPEN_FILE_BONUS;
@@ -338,12 +338,12 @@ fn eval_dark_pieces(
         }
 
         Piece::DK => {
-            if (pos.piece[Piece::DP as usize] & mask.file[sq]) == 0 {
+            if (pos.bitboards[Piece::DP as usize] & mask.file[sq]) == 0 {
                 // The semi open file bonus for the rook is used as a penalty for the king because the king isn't being shielded
                 *opening += SEMI_OPEN_FILE_BONUS;
                 *endgame += SEMI_OPEN_FILE_BONUS;
             }
-            if ((pos.piece[Piece::LP as usize] | pos.piece[Piece::DP as usize]) & mask.file[sq])
+            if ((pos.bitboards[Piece::LP as usize] | pos.bitboards[Piece::DP as usize]) & mask.file[sq])
                 == 0
             {
                 // The open file bonus for the rook is used as a penalty for the king because the king isn't being shielded

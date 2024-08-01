@@ -7,31 +7,35 @@ use crate::SQ;
 
 #[derive(Clone)]
 pub struct Position {
-    pub piece: [BB; 12],
+    pub bitboards: [BB; 12],
+    pub mailbox: [Option<Piece>; 64],
 }
 
 impl Position {
     pub fn new() -> Self {
-        Position { piece: [0; 12] }
+        Position {
+            bitboards: [0; 12],
+            mailbox: [None; 64],
+        }
     }
 
     pub fn units(&self, color: PieceColor) -> BB {
         match color {
             PieceColor::Light => {
-                self.piece[Piece::LP as usize]
-                    | self.piece[Piece::LN as usize]
-                    | self.piece[Piece::LB as usize]
-                    | self.piece[Piece::LR as usize]
-                    | self.piece[Piece::LQ as usize]
-                    | self.piece[Piece::LK as usize]
+                self.bitboards[Piece::LP as usize]
+                    | self.bitboards[Piece::LN as usize]
+                    | self.bitboards[Piece::LB as usize]
+                    | self.bitboards[Piece::LR as usize]
+                    | self.bitboards[Piece::LQ as usize]
+                    | self.bitboards[Piece::LK as usize]
             }
             PieceColor::Dark => {
-                self.piece[Piece::DP as usize]
-                    | self.piece[Piece::DN as usize]
-                    | self.piece[Piece::DB as usize]
-                    | self.piece[Piece::DR as usize]
-                    | self.piece[Piece::DQ as usize]
-                    | self.piece[Piece::DK as usize]
+                self.bitboards[Piece::DP as usize]
+                    | self.bitboards[Piece::DN as usize]
+                    | self.bitboards[Piece::DB as usize]
+                    | self.bitboards[Piece::DR as usize]
+                    | self.bitboards[Piece::DQ as usize]
+                    | self.bitboards[Piece::DK as usize]
             }
             PieceColor::Both => self.units(PieceColor::Light) | self.units(PieceColor::Dark),
         }
@@ -123,18 +127,22 @@ impl Board {
 
     pub fn add_piece(self: &mut Self, piece: Option<Piece>, sq: Sq) {
         if let Some(p) = piece {
-            self.pos.piece[p as usize].set(sq as usize);
-            zobrist::update(ZobristAction::TogglePiece(p, sq), self);
+            if sq != Sq::NoSq {
+                self.pos.bitboards[p as usize].set(sq as usize);
+                self.pos.mailbox[sq as usize] = piece;
+                zobrist::update(ZobristAction::TogglePiece(p, sq), self);
+            }
         }
     }
 
-    pub fn find_piece(&self, sq: usize) -> Option<Piece> {
-        for i in 0..12 {
-            if self.pos.piece[i].get(sq) {
-                return Piece::from_num(i);
+    pub fn remove_piece(self: &mut Self, sq: Sq) {
+        if let Some(p) = self.pos.mailbox[sq as usize] {
+            if sq != Sq::NoSq {
+                self.pos.bitboards[p as usize].set(sq as usize);
+                self.pos.mailbox[sq as usize] = None;
+                zobrist::update(ZobristAction::TogglePiece(p, sq), self);
             }
         }
-        None
     }
 
     pub fn display(&self) {
@@ -142,7 +150,7 @@ impl Board {
         for r in 0..8 {
             print!("  {} |", 8 - r);
             for f in 0..8 {
-                let piece = self.find_piece(SQ!(r, f));
+                let piece = self.pos.mailbox[SQ!(r, f)];
                 let piece_char = Piece::to_char(piece);
                 print!(" {} |", piece_char);
             }
@@ -186,8 +194,8 @@ impl Board {
     }
 
     #[allow(dead_code)]
-    pub fn is_in_check(&self, attack_info: &AttackInfo, side: PieceColor) -> bool {
-        let king_type = if side == PieceColor::Light {
+    pub fn is_in_check(&self, attack_info: &AttackInfo, checker_side: PieceColor) -> bool {
+        let king_type = if checker_side == PieceColor::Light {
             Piece::DK
         } else {
             Piece::LK
@@ -195,8 +203,8 @@ impl Board {
         sq_attacked(
             &self.pos,
             attack_info,
-            Sq::from_num(self.pos.piece[king_type].lsb()),
-            side,
+            Sq::from_num(self.pos.bitboards[king_type].lsb()),
+            checker_side,
         )
     }
 }
@@ -206,31 +214,31 @@ pub fn sq_attacked(pos: &Position, attack_info: &AttackInfo, sq: Sq, side: Piece
     let both_units = pos.units(PieceColor::Both);
     if side == PieceColor::Light
         && ((attack_info.pawn[PieceColor::Dark as usize][sq as usize]
-            & pos.piece[Piece::LP as usize])
+            & pos.bitboards[Piece::LP as usize])
             != 0)
     {
         return true;
     }
     if side == PieceColor::Dark
         && ((attack_info.pawn[PieceColor::Light as usize][sq as usize]
-            & pos.piece[Piece::DP as usize])
+            & pos.bitboards[Piece::DP as usize])
             != 0)
     {
         return true;
     }
-    if (attack_info.knight[sq as usize] & pos.piece[(side as usize) * 6 + 1]) != 0 {
+    if (attack_info.knight[sq as usize] & pos.bitboards[(side as usize) * 6 + 1]) != 0 {
         return true;
     }
-    if (attack_info.get_bishop_attack(sq, both_units) & pos.piece[(side as usize) * 6 + 2]) != 0 {
+    if (attack_info.get_bishop_attack(sq, both_units) & pos.bitboards[(side as usize) * 6 + 2]) != 0 {
         return true;
     }
-    if (attack_info.get_rook_attack(sq, both_units) & pos.piece[(side as usize) * 6 + 3]) != 0 {
+    if (attack_info.get_rook_attack(sq, both_units) & pos.bitboards[(side as usize) * 6 + 3]) != 0 {
         return true;
     }
-    if (attack_info.get_queen_attack(sq, both_units) & pos.piece[(side as usize) * 6 + 4]) != 0 {
+    if (attack_info.get_queen_attack(sq, both_units) & pos.bitboards[(side as usize) * 6 + 4]) != 0 {
         return true;
     }
-    if (attack_info.king[sq as usize] & pos.piece[(side as usize) * 6 + 5]) != 0 {
+    if (attack_info.king[sq as usize] & pos.bitboards[(side as usize) * 6 + 5]) != 0 {
         return true;
     }
     false
@@ -258,18 +266,4 @@ pub fn print_attacked_sqs(board: &Board, attack_info: &AttackInfo, side: PieceCo
     }
     println!("     - - - - - - - -");
     println!("     a b c d e f g h\n");
-}
-
-pub fn in_check(board: &Board, attack_info: &AttackInfo, checked_by: PieceColor) -> bool {
-    let king_type = if checked_by == PieceColor::Light {
-        Piece::DK
-    } else {
-        Piece::LK
-    } as usize;
-    sq_attacked(
-        &board.pos,
-        attack_info,
-        Sq::from_num(board.pos.piece[king_type].lsb()),
-        checked_by,
-    )
 }
