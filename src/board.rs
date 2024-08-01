@@ -1,9 +1,10 @@
 use crate::attack::AttackInfo;
 use crate::bb::{BBUtil, BB};
 use crate::consts::{Piece, PieceColor, Sq};
-use crate::{fen, zobrist};
+use crate::moves::Move;
 use crate::zobrist::{ZobristAction, ZobristInfo};
 use crate::SQ;
+use crate::{fen, zobrist};
 
 #[derive(Clone)]
 pub struct Position {
@@ -53,8 +54,8 @@ pub struct State {
     pub xside: PieceColor,
     pub enpassant: Option<Sq>,
     pub castling: u8,
-    pub half_moves: u32,
-    pub full_moves: u32,
+    pub half_moves: u16,
+    pub full_moves: u16,
     // ========= Zobrist keys
     // The 'key' is the primary zobrist hashing key, while the 'lock'
     // serves as the secondary hashing key. This is done to prevent the
@@ -119,11 +120,34 @@ impl State {
     }
 }
 
+#[derive(Clone, Copy, Default)]
+pub struct Undo {
+    // Bitboard of changed pieces
+    entry: BB,
+    // Captured piece
+    captured: Option<Piece>,
+    enpassant: Option<Sq>,
+    // 50-move counter
+    half_moves: u16,
+}
+
+impl Undo {
+    pub fn from_prev(prev: &Self) -> Self {
+        Self {
+            entry: prev.entry,
+            captured: None,
+            enpassant: None,
+            half_moves: prev.half_moves + 1,
+        }
+    }
+}
+
 #[derive(Clone)]
 pub struct Board {
     pub pos: Position,
     pub state: State,
     pub zobrist_info: ZobristInfo,
+    pub undos: [Undo; 2048],
 }
 
 impl Board {
@@ -132,6 +156,7 @@ impl Board {
             pos: Position::new(),
             state: State::new(),
             zobrist_info: ZobristInfo::new(),
+            undos: [Undo::default(); 2048],
         };
         this.zobrist_info.init();
         this
@@ -140,25 +165,52 @@ impl Board {
     pub fn set_fen(&mut self, fen: &str) {
         self.pos.reset();
         self.state.reset();
+        self.undos.fill(Undo::default());
         fen::parse(fen, self);
     }
 
-    pub fn add_piece(self: &mut Self, piece: Option<Piece>, square: Option<Sq>) {
+    #[inline(always)]
+    pub fn add_piece(&mut self, piece: Option<Piece>, square: Option<Sq>) {
         if let Some(p) = piece {
             if let Some(sq) = square {
+                // TODO: evaluator.add_piece()
+                self.pos.mailbox[sq as usize] = Some(p);
                 self.pos.bitboards[p as usize].set(sq as usize);
-                self.pos.mailbox[sq as usize] = piece;
                 zobrist::update(ZobristAction::TogglePiece(p, sq), self);
             }
         }
     }
 
-    pub fn remove_piece(self: &mut Self, square: Option<Sq>) {
+    #[inline(always)]
+    pub fn remove_piece(&mut self, square: Option<Sq>) {
         if let Some(sq) = square {
             if let Some(p) = self.pos.mailbox[sq as usize].take() {
+                // TODO: evaluator.remove_piece()
                 self.pos.bitboards[p as usize].set(sq as usize);
                 zobrist::update(ZobristAction::TogglePiece(p, sq), self);
             }
+        }
+    }
+
+    #[inline(always)]
+    pub fn move_piece(&mut self, source: Sq, target: Sq) {
+        // If there's a piece, free up the target square
+        self.remove_piece(Some(target));
+        self.move_piece_quiet(source, target);
+    }
+
+    #[inline(always)]
+    pub fn move_piece_quiet(&mut self, source: Sq, target: Sq) {
+        if let Some(piece) = self.pos.mailbox[source as usize].take() {
+            // TODO: evaluator.move_piece_quiet()
+            // Update hash to account piece's movement
+            zobrist::update(ZobristAction::TogglePiece(piece, source), self);
+            zobrist::update(ZobristAction::TogglePiece(piece, target), self);
+            // Remove the piece from the source square and place it on the target
+            self.pos.bitboards[piece as usize].pop(source as usize);
+            self.pos.bitboards[piece as usize].set(target as usize);
+            // Update the mailbox with the piece's new position
+            self.pos.mailbox[target as usize] = Some(piece);
         }
     }
 
@@ -250,13 +302,15 @@ pub fn sq_attacked(pos: &Position, attack_info: &AttackInfo, sq: Sq, side: Piece
     if (attack_info.knight[sq as usize] & pos.bitboards[(side as usize) * 6 + 1]) != 0 {
         return true;
     }
-    if (attack_info.get_bishop_attack(sq, both_units) & pos.bitboards[(side as usize) * 6 + 2]) != 0 {
+    if (attack_info.get_bishop_attack(sq, both_units) & pos.bitboards[(side as usize) * 6 + 2]) != 0
+    {
         return true;
     }
     if (attack_info.get_rook_attack(sq, both_units) & pos.bitboards[(side as usize) * 6 + 3]) != 0 {
         return true;
     }
-    if (attack_info.get_queen_attack(sq, both_units) & pos.bitboards[(side as usize) * 6 + 4]) != 0 {
+    if (attack_info.get_queen_attack(sq, both_units) & pos.bitboards[(side as usize) * 6 + 4]) != 0
+    {
         return true;
     }
     if (attack_info.king[sq as usize] & pos.bitboards[(side as usize) * 6 + 5]) != 0 {

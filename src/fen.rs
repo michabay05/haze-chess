@@ -57,10 +57,10 @@ pub fn parse(fen: &str, board: &mut Board) {
     }
     zobrist::update(ZobristAction::Enpassant, board);
     // Set 50 move rule
-    let half_moves = fen_parts.next().unwrap_or("0").parse::<u32>().unwrap();
+    let half_moves = fen_parts.next().unwrap_or("0").parse::<u16>().unwrap();
     board.state.half_moves = half_moves;
     // Set move counter
-    let full_moves = fen_parts.next().unwrap_or("1").parse::<u32>().unwrap();
+    let full_moves = fen_parts.next().unwrap_or("1").parse::<u16>().unwrap();
     board.state.full_moves = full_moves;
 }
 
