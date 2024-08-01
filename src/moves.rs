@@ -32,7 +32,7 @@ pub trait MoveUtil {
         twosquare: bool,
         enpassant: bool,
         castling: bool,
-    ) -> Self;
+    ) -> Option<Self> where Self: Sized;
     fn to_str(&self) -> String;
 }
 
@@ -98,18 +98,23 @@ impl MoveUtil for Move {
         twosquare: bool,
         enpassant: bool,
         castling: bool,
-    ) -> Self {
+    ) -> Option<Self> {
         assert!(move_str.len() == 4 || move_str.len() == 5);
         let source = Sq::from_str(&move_str[0..2]);
         let target = Sq::from_str(&move_str[2..4]);
+        if source.is_none() || target.is_none() {
+            return None;
+        }
+        let source = source.unwrap();
+        let target = target.unwrap();
         let promoted = if move_str.len() == 5 {
             Piece::from_char(move_str.chars().nth(4).unwrap())
         } else {
             None
         };
-        Self::encode(
+        Some(Self::encode(
             source, target, piece, promoted, capture, twosquare, enpassant, castling,
-        )
+        ))
     }
 
     fn to_str(&self) -> String {
@@ -192,7 +197,10 @@ pub fn play_move(
             let pawn_type = if piece == 0 { Piece::LP } else { Piece::DP } as usize;
             main.pos.bitboards[pawn_type].pop(target);
             zobrist::update(
-                ZobristAction::TogglePiece(Piece::from_num(pawn_type).unwrap(), Sq::from_num(target)),
+                ZobristAction::TogglePiece(
+                    Piece::from_num(pawn_type).unwrap(),
+                    Sq::from_num(target),
+                ),
                 main,
             );
 
@@ -218,30 +226,29 @@ pub fn play_move(
             }
             main.pos.bitboards[pawn_type as usize].pop((target as i32 + direction as i32) as usize);
             zobrist::update(
-                ZobristAction::TogglePiece(pawn_type, Sq::from_num((target as i32 + direction as i32) as usize)),
+                ZobristAction::TogglePiece(
+                    pawn_type,
+                    Sq::from_num((target as i32 + direction as i32) as usize),
+                ),
                 main,
             );
         }
-        if main.state.enpassant != Sq::NoSq {
-            zobrist::update(
-                ZobristAction::Enpassant,
-                main,
-            );
+        if main.state.enpassant.is_some() {
+            zobrist::update(ZobristAction::Enpassant, main);
         }
-        main.state.enpassant = Sq::NoSq;
+        main.state.enpassant = None;
 
         if is_twosquare {
             if main.state.side == PieceColor::Light {
-                main.state.enpassant =
-                    Sq::from_num((target as i32 + Direction::North as i32) as usize);
+                main.state.enpassant = Some(Sq::from_num(
+                    (target as i32 + Direction::North as i32) as usize,
+                ));
             } else {
-                main.state.enpassant =
-                    Sq::from_num((target as i32 + Direction::South as i32) as usize);
+                main.state.enpassant = Some(Sq::from_num(
+                    (target as i32 + Direction::South as i32) as usize,
+                ));
             }
-            zobrist::update(
-                ZobristAction::Enpassant,
-                main,
-            );
+            zobrist::update(ZobristAction::Enpassant, main);
         }
 
         if is_castling {
@@ -272,16 +279,10 @@ pub fn play_move(
                 _ => unreachable!("Target castling square should only be [ G1, C1 ] for white and [ G8, C8 ] for black"),
             };
             main.pos.bitboards[rook_type as usize].pop(source_castling as usize);
-            zobrist::update(
-                ZobristAction::TogglePiece(rook_type, source_castling),
-                main,
-            );
+            zobrist::update(ZobristAction::TogglePiece(rook_type, source_castling), main);
 
             main.pos.bitboards[rook_type as usize].set(target_castling as usize);
-            zobrist::update(
-                ZobristAction::TogglePiece(rook_type, target_castling),
-                main,
-            );
+            zobrist::update(ZobristAction::TogglePiece(rook_type, target_castling), main);
         }
 
         zobrist::update(ZobristAction::Castling, main);
@@ -290,10 +291,7 @@ pub fn play_move(
         zobrist::update(ZobristAction::Castling, main);
 
         main.state.change_side();
-        zobrist::update(
-            ZobristAction::ChangeColor,
-            main,
-        );
+        zobrist::update(ZobristAction::ChangeColor, main);
 
         /* ============= FOR DEBUG PURPOSES ONLY ===============
         let key_from_scratch = zobrist::gen_board_key(&zobrist_info.key, &main);

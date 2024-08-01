@@ -79,7 +79,7 @@ fn parse_pieces(fen_piece: &str, board: &mut Board) {
             if piece_color == PieceColor::Both as usize {
                 continue;
             }
-            board.add_piece(Piece::from_char(piece_char), Sq::from_num(sq));
+            board.add_piece(Piece::from_char(piece_char), Some(Sq::from_num(sq)));
             // Increment the current square
             sq += 1;
         }

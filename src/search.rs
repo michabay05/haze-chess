@@ -1,7 +1,7 @@
 use crate::attack::AttackInfo;
 use crate::bb::BBUtil;
 use crate::board::Board;
-use crate::consts::{Piece, PieceColor, Sq};
+use crate::consts::{Piece, PieceColor};
 use crate::eval::{self, EvalMasks};
 use crate::engine::Engine;
 use crate::move_gen::{self, MoveList};
@@ -237,10 +237,10 @@ fn negamax(
         let clone = board.clone();
         info.ply += 1;
         // Repetition stuff
-        if board.state.enpassant != Sq::NoSq {
+        if board.state.enpassant.is_some() {
             zobrist::update(ZobristAction::Enpassant, board);
         }
-        board.state.enpassant = Sq::NoSq;
+        board.state.enpassant = None;
         board.state.change_side();
         zobrist::update(ZobristAction::ChangeColor, board);
         // Search move with reduced depth to find beta-cutoffs

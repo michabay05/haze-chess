@@ -177,9 +177,9 @@ fn generate_pawns(board: &Board, attack_info: &AttackInfo, ml: &mut MoveList) {
                 ));
             }
         }
-        if board.state.enpassant != Sq::NoSq {
-            let enpassant_capture = attack_info.pawn[board.state.side as usize][source as usize]
-                & (1 << (board.state.enpassant as usize));
+        if let Some(sq) = board.state.enpassant {
+            let enpassant_capture =
+                attack_info.pawn[board.state.side as usize][source as usize] & (1 << (sq as usize));
             if enpassant_capture != 0 {
                 let enpassant_target = enpassant_capture.lsb();
                 ml.moves.push(Move::encode(
@@ -406,8 +406,9 @@ fn gen_light_castling(board: &Board, attack_info: &AttackInfo, ml: &mut MoveList
             if !board::sq_attacked(&board.pos, attack_info, Sq::E1, PieceColor::Dark)
                 && !board::sq_attacked(&board.pos, attack_info, Sq::F1, PieceColor::Dark)
             {
-                ml.moves
-                    .push(Move::from_str("e1g1", Piece::LK, false, false, false, true));
+                if let Some(mv) = Move::from_str("e1g1", Piece::LK, false, false, false, true) {
+                    ml.moves.push(mv);
+                }
             }
         }
     }
@@ -420,8 +421,9 @@ fn gen_light_castling(board: &Board, attack_info: &AttackInfo, ml: &mut MoveList
             if !board::sq_attacked(&board.pos, attack_info, Sq::D1, PieceColor::Dark)
                 && !board::sq_attacked(&board.pos, attack_info, Sq::E1, PieceColor::Dark)
             {
-                ml.moves
-                    .push(Move::from_str("e1c1", Piece::LK, false, false, false, true));
+                if let Some(mv) = Move::from_str("e1c1", Piece::LK, false, false, false, true) {
+                    ml.moves.push(mv);
+                }
             }
         }
     }
@@ -435,8 +437,9 @@ fn gen_dark_castling(board: &Board, attack_info: &AttackInfo, ml: &mut MoveList)
             if !board::sq_attacked(&board.pos, attack_info, Sq::E8, PieceColor::Light)
                 && !board::sq_attacked(&board.pos, attack_info, Sq::F8, PieceColor::Light)
             {
-                ml.moves
-                    .push(Move::from_str("e8g8", Piece::DK, false, false, false, true));
+                if let Some(mv) = Move::from_str("e8g8", Piece::DK, false, false, false, true) {
+                    ml.moves.push(mv);
+                }
             }
         }
     }
@@ -449,8 +452,9 @@ fn gen_dark_castling(board: &Board, attack_info: &AttackInfo, ml: &mut MoveList)
             if !board::sq_attacked(&board.pos, attack_info, Sq::D8, PieceColor::Light)
                 && !board::sq_attacked(&board.pos, attack_info, Sq::E8, PieceColor::Light)
             {
-                ml.moves
-                    .push(Move::from_str("e8c8", Piece::DK, false, false, false, true));
+                if let Some(mv) = Move::from_str("e8c8", Piece::DK, false, false, false, true) {
+                    ml.moves.push(mv);
+                }
             }
         }
     }

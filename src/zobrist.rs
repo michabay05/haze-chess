@@ -103,9 +103,9 @@ pub fn update(action: ZobristAction, board: &mut Board) {
             board.state.lock ^= info.lock.side;
         }
         ZobristAction::Enpassant => {
-            if board.state.enpassant != Sq::NoSq {
-                board.state.key ^= info.key.enpassant[board.state.enpassant as usize];
-                board.state.lock ^= info.lock.enpassant[board.state.enpassant as usize];
+            if let Some(sq) = board.state.enpassant {
+                board.state.key ^= info.key.enpassant[sq as usize];
+                board.state.lock ^= info.lock.enpassant[sq as usize];
             }
         }
         ZobristAction::TogglePiece(piece, sq) => {
@@ -125,8 +125,8 @@ pub fn gen_board_key(key: &ZobristKey, board: &Board) -> u64 {
             final_key ^= key.piece[piece][sq];
         }
     }
-    if board.state.enpassant != Sq::NoSq {
-        final_key ^= key.enpassant[board.state.enpassant as usize];
+    if let Some(sq) = board.state.enpassant {
+        final_key ^= key.enpassant[sq as usize];
     }
     final_key ^= key.castling[board.state.castling as usize];
 
@@ -148,8 +148,8 @@ pub fn gen_board_lock(lock: &ZobristLock, board: &Board) -> u64 {
             final_lock ^= lock.piece[piece][sq];
         }
     }
-    if board.state.enpassant != Sq::NoSq {
-        final_lock ^= lock.enpassant[board.state.enpassant as usize];
+    if let Some(sq) = board.state.enpassant {
+        final_lock ^= lock.enpassant[sq as usize];
     }
     final_lock ^= lock.castling[board.state.castling as usize];
 

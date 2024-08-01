@@ -172,7 +172,6 @@ pub enum Sq {
     A3, B3, C3, D3, E3, F3, G3, H3,
     A2, B2, C2, D2, E2, F2, G2, H2,
     A1, B1, C1, D1, E1, F1, G1, H1,
-    NoSq,
 }
 
 impl fmt::Display for Sq {
@@ -182,11 +181,13 @@ impl fmt::Display for Sq {
 }
 
 impl Sq {
-    pub fn from_str(sq_str: &str) -> Sq {
-        assert!(sq_str.len() == 2);
+    pub fn from_str(sq_str: &str) -> Option<Sq> {
+        if sq_str.len() != 2 {
+            return None;
+        }
         let file = (sq_str.chars().nth(0).unwrap() as u8) - b'a';
         let rank = 8 - (sq_str.chars().nth(1).unwrap() as u8 - b'0');
-        Self::from_num(SQ!(rank, file) as usize)
+        Some(Self::from_num(SQ!(rank, file) as usize))
     }
 
     pub fn from_num(sq_num: usize) -> Self {

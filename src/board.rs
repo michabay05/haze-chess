@@ -51,7 +51,7 @@ impl Position {
 pub struct State {
     pub side: PieceColor,
     pub xside: PieceColor,
-    pub enpassant: Sq,
+    pub enpassant: Option<Sq>,
     pub castling: u8,
     pub half_moves: u32,
     pub full_moves: u32,
@@ -78,7 +78,7 @@ impl State {
         State {
             side: PieceColor::Light,
             xside: PieceColor::Dark,
-            enpassant: Sq::NoSq,
+            enpassant: None,
             castling: 0,
             half_moves: 0,
             full_moves: 0,
@@ -90,7 +90,7 @@ impl State {
     pub fn reset(&mut self) {
         self.side = PieceColor::Light;
         self.xside = PieceColor::Dark;
-        self.enpassant = Sq::NoSq;
+        self.enpassant = None;
         self.castling = 0;
         self.half_moves = 0;
         self.full_moves = 0;
@@ -143,9 +143,9 @@ impl Board {
         fen::parse(fen, self);
     }
 
-    pub fn add_piece(self: &mut Self, piece: Option<Piece>, sq: Sq) {
+    pub fn add_piece(self: &mut Self, piece: Option<Piece>, square: Option<Sq>) {
         if let Some(p) = piece {
-            if sq != Sq::NoSq {
+            if let Some(sq) = square {
                 self.pos.bitboards[p as usize].set(sq as usize);
                 self.pos.mailbox[sq as usize] = piece;
                 zobrist::update(ZobristAction::TogglePiece(p, sq), self);
@@ -153,11 +153,10 @@ impl Board {
         }
     }
 
-    pub fn remove_piece(self: &mut Self, sq: Sq) {
-        if let Some(p) = self.pos.mailbox[sq as usize] {
-            if sq != Sq::NoSq {
+    pub fn remove_piece(self: &mut Self, square: Option<Sq>) {
+        if let Some(sq) = square {
+            if let Some(p) = self.pos.mailbox[sq as usize].take() {
                 self.pos.bitboards[p as usize].set(sq as usize);
-                self.pos.mailbox[sq as usize] = None;
                 zobrist::update(ZobristAction::TogglePiece(p, sq), self);
             }
         }
@@ -184,7 +183,11 @@ impl Board {
             }
         );
         self.print_castling();
-        println!("         Enpassant: {}", self.state.enpassant);
+        if let Some(enpass) = self.state.enpassant {
+            println!("         Enpassant: {}", enpass);
+        } else {
+            println!("         Enpassant: none");
+        }
         println!("        Full Moves: {}\n", self.state.full_moves);
     }
 

@@ -205,7 +205,13 @@ fn find_move(engine: &Engine, move_str: &str) -> Option<Move> {
     } else {
         None
     };
-    ml.search(Sq::from_str(source), Sq::from_str(target), promoted)
+    let source = Sq::from_str(source);
+    let target = Sq::from_str(target);
+    if source.is_some() && target.is_some() {
+        ml.search(source.unwrap(), target.unwrap(), promoted)
+    } else {
+        None
+    }
 }
 
 fn parse_go(engine: &mut Engine, args: &str) {
