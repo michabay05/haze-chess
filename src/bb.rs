@@ -74,8 +74,8 @@ impl BBUtil for BB {
     }
 
     fn print(&self) {
-        for r in 0..8 {
-            print!(" {} |", 8 - r);
+        for r in (0..8).rev() {
+            print!(" {} |", r + 1);
             for f in 0..8 {
                 print!(" {}", if self.get(SQ!(r, f)) { '1' } else { '.' });
             }
@@ -138,6 +138,9 @@ mod bb_tests {
                     Sq::from_num(bb.lsb()),
                     Sq::from_num(expected.lsb())
                 );
+                bb.print();
+                eprintln!("-----------------------");
+                expected.print();
                 assert!(false);
             }
         }
