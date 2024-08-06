@@ -23,7 +23,7 @@ const INFINITY: i32 = 50000;
 const MATE_VALUE: i32 = 49000; // Upper bound
 pub const MATE_SCORE: i32 = 48000; // Lower bound
 
-const MVV_LVA: [[u32; 6]; 6] = [
+const MVV_LVA: [[u16; 6]; 6] = [
     [105, 205, 305, 405, 505, 605],
     [104, 204, 304, 404, 504, 604],
     [103, 203, 303, 403, 503, 603],
@@ -44,7 +44,7 @@ pub struct SearchInfo {
     pub killer: [[Move; MAX_SEARCH_PLY]; 2], // [id][ply]
     pub history: [[Move; 64]; 12],    // [piece][sq]
     pub pv_len: [u32; MAX_SEARCH_PLY],
-    pub pv_table: [[u32; MAX_SEARCH_PLY]; MAX_SEARCH_PLY],
+    pub pv_table: [[Move; MAX_SEARCH_PLY]; MAX_SEARCH_PLY],
     pub tt: Arc<RwLock<HashTT>>,
 }
 
@@ -226,7 +226,7 @@ fn negamax(
     info.nodes += 1;
 
     // Check extension
-    let in_check =  board.is_in_check(attack_info, board.state.xside);
+    let in_check =  board.is_in_check(attack_info, board.state.side.opposite());
     if in_check {
         depth += 1;
     }
@@ -237,10 +237,10 @@ fn negamax(
         let clone = board.clone();
         info.ply += 1;
         // Repetition stuff
-        if board.state.enpassant.is_some() {
-            zobrist::update(ZobristAction::Enpassant, board);
+        if let Some(sq) = board.enpassant() {
+            zobrist::update(ZobristAction::SetEnpassant(sq), board);
         }
-        board.state.enpassant = None;
+        board.set_enpassant(None);
         board.state.change_side();
         zobrist::update(ZobristAction::ChangeColor, board);
         // Search move with reduced depth to find beta-cutoffs
@@ -306,7 +306,7 @@ fn negamax(
             if move_searched >= FULL_DEPTH_MOVES
                 && depth >= REDUCTION_LIMIT
                 && !in_check
-                && mv.promoted().is_none()
+                && mv.is_promotion()
                 && !mv.is_capture()
             {
                 score = -negamax(
@@ -366,8 +366,10 @@ fn negamax(
         if score > alpha {
             // Switch flag to EXACT(PV node) from ALPHA (fail-low node)
             tt_flag = TTFlag::Exact;
+            // TODO: handle `.unwrap()`
+            let piece = board.pos.mailbox[mv.source() as usize].unwrap();
             if !mv.is_capture() {
-                info.history[mv.piece() as usize][mv.target() as usize] += depth;
+                info.history[piece as usize][mv.target() as usize] += depth as u16;
             }
 
             // PV node
@@ -492,7 +494,7 @@ pub fn quiescence(
     alpha
 }
 
-fn score_move(info: &mut SearchInfo, board: &mut Board, mv: Move) -> u32 {
+fn score_move(info: &mut SearchInfo, board: &mut Board, mv: Move) -> Move {
     if info.score_pv {
         // Check if move on current ply is a PV move
         if info.pv_table[0][info.ply as usize] == mv {
@@ -502,6 +504,8 @@ fn score_move(info: &mut SearchInfo, board: &mut Board, mv: Move) -> u32 {
         }
     }
 
+    // TODO: handle `.unwrap()`
+    let piece = board.pos.mailbox[mv.source() as usize].unwrap();
     if mv.is_capture() {
         // Set to pawn by default; for enpassant
         let mut captured = Piece::LP as usize;
@@ -518,7 +522,7 @@ fn score_move(info: &mut SearchInfo, board: &mut Board, mv: Move) -> u32 {
             }
         }
         // Add 10,000 to ensure captures are evaluated before killer moves
-        MVV_LVA[(mv.piece() as usize) % 6][captured % 6] + 10_000
+        MVV_LVA[(piece as usize) % 6][captured % 6] + 10_000
     } else {
         // Score the best killer move
         if info.killer[0][info.ply as usize] == mv {
@@ -526,13 +530,13 @@ fn score_move(info: &mut SearchInfo, board: &mut Board, mv: Move) -> u32 {
         } else if info.killer[1][info.ply as usize] == mv {
             return 8000;
         } else {
-            return info.history[mv.piece() as usize][mv.target() as usize];
+            return info.history[piece as usize][mv.target() as usize];
         }
     }
 }
 
 fn sort_moves(info: &mut SearchInfo, board: &mut Board, ml: &mut MoveList) {
-    let mut move_score_list: Vec<u32> = vec![];
+    let mut move_score_list: Vec<Move> = vec![];
     for mv in &ml.moves {
         move_score_list.push(score_move(info, board, *mv));
     }

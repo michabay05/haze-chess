@@ -2,7 +2,7 @@ use crate::consts::{Piece, PieceColor, Sq};
 use crate::engine::Engine;
 use crate::eval;
 use crate::fen::FEN_POSITIONS;
-use crate::move_gen::{self, MoveList};
+use crate::move_gen;
 use crate::moves::{self, Move};
 use crate::perft;
 use crate::search::{self, MAX_SEARCH_PLY};
@@ -115,11 +115,6 @@ pub fn parse(engine: &mut Engine, input_str: &str, should_quit: &mut bool) {
             );
             println!("Current eval: {eval}");
         }
-        "genmoves" => {
-            let mut ml = MoveList::new();
-            move_gen::generate(&engine.board, &engine.attack_info, &mut ml);
-            ml.print();
-        }
         "display" | "d" => engine.board.display(),
         "help" => print_help(),
         "debug" => match rest {
@@ -225,14 +220,16 @@ fn parse_go(engine: &mut Engine, args: &str) {
             10
         };
         let start = Instant::now();
-        let nodes = perft::driver(
+        let side = engine.board.state.side;
+        let p_info = perft::driver(
             &mut engine.board,
+            side,
             &engine.attack_info,
             perft_depth,
-            engine.debug
+            engine.debug,
         );
         let dur = Instant::now().duration_since(start);
-        println!("   Nodes: {}", nodes);
+        println!("   Nodes: {}", p_info.nodes);
         println!("    Time: {}", dur.as_secs_f32());
         return;
     }

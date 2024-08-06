@@ -1,21 +1,27 @@
-use crate::consts::{Direction, File, MASK_FILE};
+use crate::consts::{Direction, File, Sq, MASK_FILE};
 use crate::SQ;
 
 pub type BB = u64;
 
 pub trait BBUtil {
+    fn from_sq(sq: Sq) -> Self;
     fn set(&mut self, ind: usize);
     fn get(&self, ind: usize) -> bool;
     fn pop(&mut self, ind: usize);
-    fn toggle(&mut self, ind: usize);
+    fn toggle(&self, ind: usize) -> Self;
     fn lsb(&self) -> usize;
     fn pop_lsb(&mut self) -> usize;
-    fn shift(&mut self, dir: Direction);
+    fn shift(&self, dir: Direction) -> Self;
     #[allow(dead_code)]
     fn print(&self);
 }
 
 impl BBUtil for BB {
+    #[inline(always)]
+    fn from_sq(sq: Sq) -> Self {
+        1 << (sq as usize)
+    }
+
     #[inline(always)]
     fn set(&mut self, ind: usize) {
         *self |= 1 << ind;
@@ -32,18 +38,19 @@ impl BBUtil for BB {
     }
 
     #[inline(always)]
-    fn toggle(&mut self, ind: usize) {
-        *self ^= 1 << ind;
+    fn toggle(&self, ind: usize) -> Self {
+        *self ^ (1 << ind)
     }
 
     #[inline(always)]
     fn lsb(&self) -> usize {
-        let num = *self ^ (*self - 1);
-        let count = num.count_ones() as usize;
-        if count == 0 {
-            return 0;
-        }
-        count - 1
+        self.trailing_zeros() as usize
+        // let num = *self ^ (*self - 1);
+        // let count = num.count_ones() as usize;
+        // if count == 0 {
+        //     return 0;
+        // }
+        // count - 1
     }
 
     #[inline(always)]
@@ -54,8 +61,8 @@ impl BBUtil for BB {
     }
 
     #[inline(always)]
-    fn shift(&mut self, dir: Direction) {
-        *self = match dir {
+    fn shift(&self, dir: Direction) -> Self {
+        match dir {
             Direction::North => *self << 8,
             Direction::South => *self >> 8,
             Direction::NorthNorth => *self << 16,
@@ -69,8 +76,8 @@ impl BBUtil for BB {
             _ => {
                 eprintln!("Unhandled bitboard shifting direction");
                 *self
-            },
-        };
+            }
+        }
     }
 
     fn print(&self) {
@@ -110,7 +117,10 @@ mod bb_tests {
             (Light, E4, West, D4),
             (Light, H4, West, G4),
             (Light, H7, North, H8),
-
+            (Light, C5, Northeast, D6),
+            (Light, C5, Northwest, B6),
+            (Light, C5, Southeast, D4),
+            (Light, C5, Southwest, B4),
             (Dark, C7, NorthNorth, C5),
             (Dark, H2, SouthSouth, H4),
             (Dark, E5, North, E4),
@@ -119,8 +129,10 @@ mod bb_tests {
             (Dark, E5, West, F5),
             (Dark, B4, East, A4),
             (Dark, H8, North, H7),
-            (Dark, B6, Northeast, A5),
-            (Dark, A2, Southwest, B3),
+            (Dark, G3, Northeast, F2),
+            (Dark, G3, Northwest, H2),
+            (Dark, G3, Southeast, F4),
+            (Dark, G3, Southwest, H4),
         ];
 
         for (side, sq, dir, shifted) in arr {

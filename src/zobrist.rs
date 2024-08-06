@@ -9,7 +9,7 @@ pub struct ZobristKey {
     // Unnecessary work is being done for the enpassant keys
     // Only 16 squares (3rd and 6th rank) are enpassant squares; 48 out of the 64 are unnecessary
     pub enpassant: [u64; 64],
-    pub castling: [u64; 16],
+    // pub castling: [u64; 16],
     pub side: u64,
 }
 
@@ -18,7 +18,7 @@ impl ZobristKey {
         Self {
             piece: [[0; 64]; 12],
             enpassant: [0; 64],
-            castling: [0; 16],
+            // castling: [0; 16],
             side: 0,
         }
     }
@@ -30,7 +30,7 @@ pub struct ZobristLock {
     // Unnecessary work is being done for the enpassant keys
     // Same reasoning as ZobristKey enpassant
     pub enpassant: [u64; 64],
-    pub castling: [u64; 16],
+    // pub castling: [u64; 16],
     pub side: u64,
 }
 
@@ -39,7 +39,7 @@ impl ZobristLock {
         Self {
             piece: [[0; 64]; 12],
             enpassant: [0; 64],
-            castling: [0; 16],
+            // castling: [0; 16],
             side: 0,
         }
     }
@@ -74,39 +74,39 @@ impl ZobristInfo {
             self.lock.enpassant[sq] = self.prng.rand64();
         }
 
-        // All different variations of castling rights - (1 << 4)
-        for i in 0..16 {
-            self.key.castling[i] = self.prng.rand64();
-            self.lock.castling[i] = self.prng.rand64();
-        }
+        // NOTE: for now, castling isn't included in the zobrist hashing
+        // // All different variations of castling rights - (1 << 4)
+        // for i in 0..16 {
+        //     self.key.castling[i] = self.prng.rand64();
+        //     self.lock.castling[i] = self.prng.rand64();
+        // }
         self.key.side = self.prng.rand64();
         self.lock.side = self.prng.rand64();
     }
 }
 
 pub enum ZobristAction {
-    Castling,
+    // Castling,
     ChangeColor,
-    Enpassant,
+    SetEnpassant(Sq),
     TogglePiece(Piece, Sq),
 }
 
 pub fn update(action: ZobristAction, board: &mut Board) {
-    let info = &board.zobrist_info;
+    let info = &board.zobrist;
     match action {
-        ZobristAction::Castling => {
-            board.state.key ^= info.key.castling[board.state.castling as usize];
-            board.state.lock ^= info.lock.castling[board.state.castling as usize];
-        }
+        // NOTE: for now, castling isn't included in the zobrist hashing
+        // ZobristAction::Castling => {
+        //     board.state.key ^= info.key.castling[board.state.castling as usize];
+        //     board.state.lock ^= info.lock.castling[board.state.castling as usize];
+        // }
         ZobristAction::ChangeColor => {
             board.state.key ^= info.key.side;
             board.state.lock ^= info.lock.side;
         }
-        ZobristAction::Enpassant => {
-            if let Some(sq) = board.state.enpassant {
-                board.state.key ^= info.key.enpassant[sq as usize];
-                board.state.lock ^= info.lock.enpassant[sq as usize];
-            }
+        ZobristAction::SetEnpassant(sq) => {
+            board.state.key ^= info.key.enpassant[sq as usize];
+            board.state.lock ^= info.lock.enpassant[sq as usize];
         }
         ZobristAction::TogglePiece(piece, sq) => {
             board.state.key ^= info.key.piece[piece as usize][sq as usize];
@@ -115,6 +115,7 @@ pub fn update(action: ZobristAction, board: &mut Board) {
     };
 }
 
+#[allow(dead_code)]
 pub fn gen_board_key(key: &ZobristKey, board: &Board) -> u64 {
     let mut final_key = 0;
     let mut bb_copy;
@@ -125,10 +126,12 @@ pub fn gen_board_key(key: &ZobristKey, board: &Board) -> u64 {
             final_key ^= key.piece[piece][sq];
         }
     }
-    if let Some(sq) = board.state.enpassant {
+    if let Some(sq) = board.enpassant() {
         final_key ^= key.enpassant[sq as usize];
     }
-    final_key ^= key.castling[board.state.castling as usize];
+
+    // NOTE: for now, castling isn't included in the zobrist hashing
+    // final_key ^= key.castling[board.state.castling as usize];
 
     // If side to move is dark, then hash the side
     // If not, don't hash the side to move
@@ -138,6 +141,7 @@ pub fn gen_board_key(key: &ZobristKey, board: &Board) -> u64 {
     final_key
 }
 
+#[allow(dead_code)]
 pub fn gen_board_lock(lock: &ZobristLock, board: &Board) -> u64 {
     let mut final_lock = 0;
     let mut bb_copy;
@@ -148,10 +152,12 @@ pub fn gen_board_lock(lock: &ZobristLock, board: &Board) -> u64 {
             final_lock ^= lock.piece[piece][sq];
         }
     }
-    if let Some(sq) = board.state.enpassant {
+    if let Some(sq) = board.enpassant() {
         final_lock ^= lock.enpassant[sq as usize];
     }
-    final_lock ^= lock.castling[board.state.castling as usize];
+
+    // NOTE: for now, castling isn't included in the zobrist hashing
+    // final_lock ^= lock.castling[board.state.castling as usize];
 
     // If side to move is dark, then hash the side
     // If not, don't hash the side to move

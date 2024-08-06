@@ -1,7 +1,7 @@
 #![allow(unused_comparisons)]
 
 use crate::bb::{BBUtil, BB};
-use crate::consts::{PieceColor, PieceType, Sq};
+use crate::consts::{Direction, PieceColor, PieceType, Sq};
 use crate::magics::{BISHOP_MAGICS, ROOK_MAGICS};
 use crate::{COL, ROW, SQ};
 
@@ -38,6 +38,7 @@ pub struct AttackInfo {
     pub rook_occ_mask: [BB; 64],
     pub rook_attack: Vec<Vec<BB>>,
     pub squares_between: [[BB; 64]; 64],
+    pub line_of: [[BB; 64]; 64],
 }
 
 impl AttackInfo {
@@ -48,6 +49,7 @@ impl AttackInfo {
             rook_occ_mask: [0; 64],
             rook_attack: vec![vec![0; 4096]; 64],
             squares_between: [[0; 64]; 64],
+            line_of: [[0; 64]; 64],
         }
     }
 
@@ -57,6 +59,50 @@ impl AttackInfo {
         gen_sliding(self, PieceType::Bishop);
         gen_sliding(self, PieceType::Rook);
         self.gen_squares_between();
+        self.gen_line_of();
+    }
+
+    #[inline(always)]
+    pub fn get_pawn_attack(&self, color: PieceColor, sq: Sq) -> BB {
+        if color == PieceColor::Light {
+            LIGHT_PAWN_ATTACKS[sq as usize]
+        } else {
+            DARK_PAWN_ATTACKS[sq as usize]
+        }
+    }
+
+    #[inline(always)]
+    pub fn get_all_pawn_attacks(&self, color: PieceColor, bb: BB) -> BB {
+        let mut all_attacks = 0;
+        if color == PieceColor::Light {
+            all_attacks |= bb.shift(Direction::Northwest);
+            all_attacks |= bb.shift(Direction::Northeast);
+        } else {
+            all_attacks |= bb.shift(Direction::Southwest);
+            all_attacks |= bb.shift(Direction::Southeast);
+        }
+        all_attacks
+    }
+
+    pub fn get_knight_attack(&self, sq: Sq) -> BB {
+        KNIGHT_ATTACKS[sq as usize]
+    }
+
+    pub fn get_king_attack(&self, sq: Sq) -> BB {
+        KING_ATTACKS[sq as usize]
+    }
+
+    // Hyperbola Quintessence Algorithm
+    #[inline(always)]
+    pub fn sliding_attack(&self, square: Sq, blocker_board: BB, mask: BB) -> BB {
+        let sq = square as usize;
+        let mut sq_bb = 0;
+        sq_bb.set(sq);
+        let first_line = (mask & blocker_board).wrapping_sub(sq_bb.wrapping_mul(2));
+        let second_line = reverse_bitboard(
+            reverse_bitboard(mask & blocker_board).wrapping_sub(sq_bb.wrapping_mul(2)),
+        ) & mask;
+        first_line ^ second_line
     }
 
     pub fn get_attack(&self, color: PieceColor, pt: PieceType, sq: Sq, blocker_board: BB) -> BB {
@@ -64,7 +110,9 @@ impl AttackInfo {
             // Sliders
             PieceType::Rook => self.get_rook_attack(sq, blocker_board),
             PieceType::Bishop => self.get_bishop_attack(sq, blocker_board),
-            PieceType::Queen => self.get_bishop_attack(sq, blocker_board) | self.get_rook_attack(sq, blocker_board),
+            PieceType::Queen => {
+                self.get_bishop_attack(sq, blocker_board) | self.get_rook_attack(sq, blocker_board)
+            }
             // Leapers
             PieceType::Pawn => {
                 if color == PieceColor::Light {
@@ -72,7 +120,7 @@ impl AttackInfo {
                 } else {
                     DARK_PAWN_ATTACKS[sq as usize]
                 }
-            },
+            }
             PieceType::Knight => KNIGHT_ATTACKS[sq as usize],
             PieceType::King => KING_ATTACKS[sq as usize],
         }
@@ -96,6 +144,39 @@ impl AttackInfo {
 
     pub fn get_queen_attack(&self, sq: Sq, blocker_board: BB) -> BB {
         self.get_bishop_attack(sq, blocker_board) | self.get_rook_attack(sq, blocker_board)
+    }
+
+    pub fn gen_line_of(&mut self) {
+        let mut sq1 = Sq::A1 as usize;
+        while sq1 < Sq::H8 as usize {
+            let mut sq2 = Sq::A1 as usize;
+
+            while sq2 < Sq::H8 as usize {
+                let mut sqs: BB = 0;
+                sqs.set(sq1);
+                sqs.set(sq2);
+
+                if COL!(sq1) == COL!(sq2) || ROW!(sq1) == ROW!(sq2) {
+                    self.line_of[sq1][sq2] = self.get_rook_attack(Sq::from_num(sq1), 0)
+                        & self.get_rook_attack(Sq::from_num(sq2), 0)
+                        | BB::from_sq(Sq::from_num(sq1))
+                        | BB::from_sq(Sq::from_num(sq2));
+                } else if diagonal(sq1 as i32) == diagonal(sq2 as i32)
+                    || anti_diagonal(sq1 as i32) == anti_diagonal(sq2 as i32)
+                {
+                    self.line_of[sq1][sq2] = self.get_bishop_attack(Sq::from_num(sq1), 0)
+                        & self.get_bishop_attack(Sq::from_num(sq2), 0)
+                        | BB::from_sq(Sq::from_num(sq1))
+                        | BB::from_sq(Sq::from_num(sq2));
+                } else {
+                    self.line_of[sq1][sq2] = 0;
+                }
+
+                sq2 += 1;
+            }
+
+            sq1 += 1;
+        }
     }
 
     pub fn gen_squares_between(&mut self) {
@@ -129,7 +210,7 @@ impl AttackInfo {
 }
 
 fn diagonal(sq: i32) -> i32 {
-    7 + ROW!(sq) + COL!(sq)
+    7 + ROW!(sq) - COL!(sq)
 }
 
 fn anti_diagonal(sq: i32) -> i32 {
@@ -369,6 +450,17 @@ pub fn set_occ(ind: usize, relevant_bits: u32, mut occ_mask: BB) -> BB {
     occ
 }
 
+#[inline(always)]
+fn reverse_bitboard(bb: BB) -> BB {
+    let mut b = bb;
+    b = (b & 0x5555555555555555) << 1 | ((b >> 1) & 0x5555555555555555);
+    b = (b & 0x3333333333333333) << 2 | ((b >> 2) & 0x3333333333333333);
+    b = (b & 0x0f0f0f0f0f0f0f0f) << 4 | ((b >> 4) & 0x0f0f0f0f0f0f0f0f);
+    b = (b & 0x00ff00ff00ff00ff) << 8 | ((b >> 8) & 0x00ff00ff00ff00ff);
+
+    return (b << 48) | ((b & 0xffff0000) << 16) | ((b >> 16) & 0xffff0000) | (b >> 48);
+}
+
 #[rustfmt::skip]
 pub const LIGHT_PAWN_ATTACKS: [BB; 64] = [
  0x200, 0x500, 0xa00, 0x1400,
@@ -446,6 +538,68 @@ pub const KING_ATTACKS: [BB; 64] = [
     0x203000000000000, 0x507000000000000, 0xa0e000000000000, 0x141c000000000000,
     0x2838000000000000, 0x5070000000000000, 0xa0e0000000000000, 0x40c0000000000000,
 ];
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn squares_between() {
+        let mut attack_info = AttackInfo::new();
+        attack_info.init();
+
+        use Sq::*;
+        let arr = [
+            (B4, F4, 0x1c000000),
+            (E3, E7, 0x101010000000),
+            (B2, G7, 0x201008040000),
+            (B7, G2, 0x40810200000),
+            (A1, G4, 0),
+        ];
+
+        for (sq1, sq2, expected) in arr {
+            if attack_info.squares_between[sq1 as usize][sq2 as usize] != expected {
+                println!("FAILED: sq1: {}, sq2: {}", sq1, sq2);
+                assert!(false);
+            }
+        }
+    }
+
+    #[test]
+    fn line_of() {
+        let mut attack_info = AttackInfo::new();
+        attack_info.init();
+
+        use Sq::*;
+        let arr = [
+            (E3, E7, 0x1010101010101010),
+            (B4, F4, 0xff000000),
+            (B2, G7, 0x8040201008040201),
+            (B7, G2, 0x102040810204080),
+            (A1, G4, 0),
+        ];
+
+        for (sq1, sq2, expected) in arr {
+            if attack_info.line_of[sq1 as usize][sq2 as usize] != expected {
+                println!("FAILED: sq1: {}, sq2: {}", sq1, sq2);
+                assert!(false);
+            }
+        }
+    }
+
+    #[test]
+    fn pawn_attacks() {
+        let mut attack_info = AttackInfo::new();
+        attack_info.init();
+
+        assert_eq!(attack_info.get_pawn_attack(PieceColor::Dark, Sq::E5), 0x28000000);
+        assert_eq!(attack_info.get_pawn_attack(PieceColor::Light, Sq::E4), 0x2800000000);
+        assert_eq!(attack_info.get_pawn_attack(PieceColor::Light, Sq::A5), 0x20000000000);
+
+        assert_eq!(attack_info.get_all_pawn_attacks(PieceColor::Light, 0x2800000200400), 0x5400000500a0000);
+        assert_eq!(attack_info.get_all_pawn_attacks(PieceColor::Dark, 0x2800000200400), 0x5400000500a);
+    }
+}
 
 // fn gen_leapers() {
 //     gen_pawn(PieceColor::Light);

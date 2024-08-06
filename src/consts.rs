@@ -225,6 +225,62 @@ pub enum File {
     A, B, C, D, E, F, G, H
 }
 
+impl File {
+    #[inline(always)]
+    pub fn from_num(num: usize) -> Self {
+        match num {
+            0 => Self::A,
+            1 => Self::B,
+            2 => Self::C,
+            3 => Self::D,
+            4 => Self::E,
+            5 => Self::F,
+            6 => Self::G,
+            7 => Self::H,
+            _ => unreachable!("Rank exceeds the bounds [0..7]")
+        }
+    }
+}
+
+#[rustfmt::skip]
+#[derive(Copy, Clone, PartialEq)]
+pub enum Rank {
+    One, Two, Three, Four, Five, Six, Seven, Eight
+}
+
+impl Rank {
+    #[inline(always)]
+    pub fn from_num(num: usize) -> Self {
+        match num {
+            0 => Self::One,
+            1 => Self::Two,
+            2 => Self::Three,
+            3 => Self::Four,
+            4 => Self::Five,
+            5 => Self::Six,
+            6 => Self::Seven,
+            7 => Self::Eight,
+            _ => unreachable!("Rank exceeds the bounds [0..7]")
+        }
+    }
+
+    pub fn relative(&self, side: PieceColor) -> Self {
+        if side == PieceColor::Light {
+            return *self;
+        }
+        match *self {
+            Self::One => Self::Eight,
+            Self::Two => Self::Seven,
+            Self::Three => Self::Six,
+            Self::Four => Self::Five,
+            Self::Five => Self::Four,
+            Self::Six => Self::Three,
+            Self::Seven => Self::Two,
+            Self::Eight => Self::One
+        }
+    }
+}
+
 #[rustfmt::skip]
 #[derive(Copy, Clone, PartialEq)]
 pub enum Sq {
@@ -254,6 +310,27 @@ impl Sq {
         Some(Self::from_num(SQ!(rank, file) as usize))
     }
 
+    #[inline(always)]
+    pub fn add(self, dir: Direction) -> Self {
+        Sq::from_num((self as i32 + dir as i32) as usize)
+    }
+
+    #[inline(always)]
+    pub fn sub(self, dir: Direction) -> Self {
+        Sq::from_num((self as i32 - dir as i32) as usize)
+    }
+
+    #[inline(always)]
+    pub fn rank(self) -> Rank {
+        Rank::from_num(ROW!(self as usize))
+    }
+
+    #[inline(always)]
+    pub fn file(self) -> File {
+        File::from_num(COL!(self as usize))
+    }
+
+    #[inline(always)]
     pub fn from_num(sq_num: usize) -> Self {
         match sq_num {
             0 => Self::A1,
@@ -320,7 +397,7 @@ impl Sq {
             61 => Self::F8,
             62 => Self::G8,
             63 => Self::H8,
-            _ => unreachable!("Sq::from_num() should only contain these values: [0-63]"),
+            _ => unreachable!("Sq::from_num() should only contain these values: [0-63]\n    Got {}", sq_num),
         }
     }
 

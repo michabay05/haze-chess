@@ -1,7 +1,7 @@
 use crate::attack::AttackInfo;
 use crate::bb::{BBUtil, BB};
-use crate::consts::{Piece, PieceColor, Sq};
-use crate::moves::Move;
+use crate::consts::{Direction, Piece, PieceColor, PieceType, Sq};
+use crate::moves::{Move, MoveFlag, MoveUtil};
 use crate::zobrist::{ZobristAction, ZobristInfo};
 use crate::SQ;
 use crate::{fen, zobrist};
@@ -51,11 +51,7 @@ impl Position {
 #[derive(Clone)]
 pub struct State {
     pub side: PieceColor,
-    pub xside: PieceColor,
-    pub enpassant: Option<Sq>,
-    pub castling: u8,
-    pub half_moves: u16,
-    pub full_moves: u16,
+    // pub castling: u8,
     // ========= Zobrist keys
     // The 'key' is the primary zobrist hashing key, while the 'lock'
     // serves as the secondary hashing key. This is done to prevent the
@@ -78,57 +74,33 @@ impl State {
     pub fn new() -> Self {
         State {
             side: PieceColor::Light,
-            xside: PieceColor::Dark,
-            enpassant: None,
-            castling: 0,
-            half_moves: 0,
-            full_moves: 0,
             key: 0,
             lock: 0,
         }
     }
 
     pub fn reset(&mut self) {
-        self.side = PieceColor::Light;
-        self.xside = PieceColor::Dark;
-        self.enpassant = None;
-        self.castling = 0;
-        self.half_moves = 0;
-        self.full_moves = 0;
-        self.key = 0;
-        self.lock = 0;
+        *self = State::new();
     }
 
     pub fn change_side(&mut self) {
         if self.side == PieceColor::Light {
             self.side = PieceColor::Dark;
-            self.xside = PieceColor::Light;
         } else {
             self.side = PieceColor::Light;
-            self.xside = PieceColor::Dark;
         }
-    }
-
-    pub fn toggle_castling(&mut self, castling_type: usize) {
-        let mut castling = self.castling as BB;
-        if castling.get(castling_type) {
-            castling.pop(castling_type);
-        } else {
-            castling.set(castling_type);
-        }
-        self.castling = castling as u8;
     }
 }
 
 #[derive(Clone, Copy, Default)]
 pub struct Undo {
     // Bitboard of changed pieces
-    entry: BB,
+    pub entry: BB,
     // Captured piece
     captured: Option<Piece>,
-    enpassant: Option<Sq>,
+    pub enpassant: Option<Sq>,
     // 50-move counter
-    half_moves: u16,
+    fifty: usize,
 }
 
 impl Undo {
@@ -137,7 +109,7 @@ impl Undo {
             entry: prev.entry,
             captured: None,
             enpassant: None,
-            half_moves: prev.half_moves + 1,
+            fifty: prev.fifty + 1,
         }
     }
 }
@@ -146,8 +118,9 @@ impl Undo {
 pub struct Board {
     pub pos: Position,
     pub state: State,
-    pub zobrist_info: ZobristInfo,
-    pub undos: [Undo; 2048],
+    pub zobrist: ZobristInfo,
+    pub history: [Undo; 2048],
+    pub game_ply: usize,
 }
 
 impl Board {
@@ -155,18 +128,45 @@ impl Board {
         let mut this = Board {
             pos: Position::new(),
             state: State::new(),
-            zobrist_info: ZobristInfo::new(),
-            undos: [Undo::default(); 2048],
+            zobrist: ZobristInfo::new(),
+            history: [Undo::default(); 2048],
+            game_ply: 0,
         };
-        this.zobrist_info.init();
+        this.zobrist.init();
         this
+    }
+
+    pub fn enpassant(&self) -> Option<Sq> {
+        self.history[self.game_ply].enpassant
+    }
+
+    pub fn set_enpassant(&mut self, sq: Option<Sq>) {
+        self.history[self.game_ply].enpassant = sq;
     }
 
     pub fn set_fen(&mut self, fen: &str) {
         self.pos.reset();
         self.state.reset();
-        self.undos.fill(Undo::default());
+        self.history.fill(Undo::default());
         fen::parse(fen, self);
+    }
+
+    #[inline(always)]
+    pub fn diagonal_sliders(&self, side: PieceColor) -> BB {
+        if side == PieceColor::Light {
+            self.pos.bitboards[Piece::LB as usize] | self.pos.bitboards[Piece::LQ as usize]
+        } else {
+            self.pos.bitboards[Piece::DB as usize] | self.pos.bitboards[Piece::DQ as usize]
+        }
+    }
+
+    #[inline(always)]
+    pub fn orthogonal_sliders(&self, side: PieceColor) -> BB {
+        if side == PieceColor::Light {
+            self.pos.bitboards[Piece::LR as usize] | self.pos.bitboards[Piece::LQ as usize]
+        } else {
+            self.pos.bitboards[Piece::DR as usize] | self.pos.bitboards[Piece::DQ as usize]
+        }
     }
 
     #[inline(always)]
@@ -186,7 +186,7 @@ impl Board {
         if let Some(sq) = square {
             if let Some(p) = self.pos.mailbox[sq as usize].take() {
                 // TODO: evaluator.remove_piece()
-                self.pos.bitboards[p as usize].set(sq as usize);
+                self.pos.bitboards[p as usize].pop(sq as usize);
                 zobrist::update(ZobristAction::TogglePiece(p, sq), self);
             }
         }
@@ -214,10 +214,198 @@ impl Board {
         }
     }
 
+    pub fn play_move(&mut self, side: PieceColor, mv: Move) {
+        // Change side to move
+        self.state.change_side();
+        zobrist::update(ZobristAction::ChangeColor, self);
+
+        // Increment the half move clock
+        self.game_ply += 1;
+        let mut current = Undo::from_prev(&self.history[self.game_ply - 1]);
+
+        let source = mv.source();
+        let target = mv.target();
+        let flag = mv.flag();
+        current.entry.set(source as usize);
+        current.entry.set(target as usize);
+
+        if let Some(p) = self.pos.mailbox[mv.source() as usize] {
+            if p.piece_type() == PieceType::Pawn || mv.is_capture() {
+                current.fifty = 0;
+            }
+        }
+
+        match flag {
+            MoveFlag::Quiet => {
+                self.move_piece_quiet(source, target);
+            }
+            MoveFlag::DoublePush => {
+                self.move_piece_quiet(source, target);
+                let enpass = source.add(Direction::North.relative(side));
+                current.enpassant = Some(enpass);
+                zobrist::update(ZobristAction::SetEnpassant(enpass), self);
+            }
+            MoveFlag::KingSideCastling => {
+                // Move king and rook to the kingside
+                if side == PieceColor::Light {
+                    self.move_piece_quiet(Sq::E1, Sq::G1);
+                    self.move_piece_quiet(Sq::H1, Sq::F1);
+                } else {
+                    self.move_piece_quiet(Sq::E8, Sq::G8);
+                    self.move_piece_quiet(Sq::H8, Sq::F8);
+                }
+            }
+            MoveFlag::QueenSideCastling => {
+                // Move king and rook to the queenside
+                if side == PieceColor::Light {
+                    self.move_piece_quiet(Sq::E1, Sq::C1);
+                    self.move_piece_quiet(Sq::A1, Sq::D1);
+                } else {
+                    self.move_piece_quiet(Sq::E8, Sq::C8);
+                    self.move_piece_quiet(Sq::A8, Sq::D8);
+                }
+            }
+            MoveFlag::Enpassant => {
+                self.move_piece_quiet(source, target);
+                let sq = target.add(Direction::South.relative(side));
+                self.remove_piece(Some(sq));
+            }
+            MoveFlag::PromKnight => {
+                self.remove_piece(Some(source));
+                self.add_piece(
+                    Some(Piece::from_type(side, PieceType::Knight)),
+                    Some(target),
+                );
+            }
+            MoveFlag::PromBishop => {
+                self.remove_piece(Some(source));
+                self.add_piece(
+                    Some(Piece::from_type(side, PieceType::Bishop)),
+                    Some(target),
+                );
+            }
+            MoveFlag::PromRook => {
+                self.remove_piece(Some(source));
+                self.add_piece(Some(Piece::from_type(side, PieceType::Rook)), Some(target));
+            }
+            MoveFlag::PromQueen => {
+                self.remove_piece(Some(source));
+                self.add_piece(Some(Piece::from_type(side, PieceType::Queen)), Some(target));
+            }
+            MoveFlag::PromCapKnight => {
+                self.remove_piece(Some(source));
+                current.captured = self.pos.mailbox[target as usize];
+                self.remove_piece(Some(target));
+                self.add_piece(
+                    Some(Piece::from_type(side, PieceType::Knight)),
+                    Some(target),
+                );
+            }
+            MoveFlag::PromCapBishop => {
+                self.remove_piece(Some(source));
+                current.captured = self.pos.mailbox[target as usize];
+                self.remove_piece(Some(target));
+                self.add_piece(
+                    Some(Piece::from_type(side, PieceType::Bishop)),
+                    Some(target),
+                );
+            }
+            MoveFlag::PromCapRook => {
+                self.remove_piece(Some(source));
+                current.captured = self.pos.mailbox[target as usize];
+                self.remove_piece(Some(target));
+                self.add_piece(Some(Piece::from_type(side, PieceType::Rook)), Some(target));
+            }
+            MoveFlag::PromCapQueen => {
+                self.remove_piece(Some(source));
+                current.captured = self.pos.mailbox[target as usize];
+                self.remove_piece(Some(target));
+                self.add_piece(Some(Piece::from_type(side, PieceType::Queen)), Some(target));
+            }
+            MoveFlag::Capture => {
+                current.captured = self.pos.mailbox[target as usize];
+                self.move_piece(source, target);
+            }
+        }
+
+        self.history[self.game_ply] = current;
+    }
+
+    pub fn undo_move(&mut self, side: PieceColor, mv: Move) {
+        let source = mv.source();
+        let target = mv.target();
+        let flag = mv.flag();
+        let opp = side.opposite();
+
+        match flag {
+            MoveFlag::Quiet => {
+                self.move_piece_quiet(target, source);
+            }
+            MoveFlag::DoublePush => {
+                self.move_piece_quiet(target, source);
+                // TODO: replace this with a zobrist action
+                if let Some(enpass) = self.history[self.game_ply].enpassant {
+                    zobrist::update(ZobristAction::SetEnpassant(enpass), self);
+                    // self.state.key ^= self.zobrist.key.enpassant[enpass as usize];
+                    // self.state.lock ^= self.zobrist.lock.enpassant[enpass as usize];
+                }
+            }
+            MoveFlag::KingSideCastling => {
+                // Move king and rook to the kingside
+                if side == PieceColor::Light {
+                    self.move_piece_quiet(Sq::G1, Sq::E1);
+                    self.move_piece_quiet(Sq::F1, Sq::H1);
+                } else {
+                    self.move_piece_quiet(Sq::G8, Sq::E8);
+                    self.move_piece_quiet(Sq::F8, Sq::H8);
+                }
+            }
+            MoveFlag::QueenSideCastling => {
+                // Move king and rook to the kingside
+                if side == PieceColor::Light {
+                    self.move_piece_quiet(Sq::C1, Sq::E1);
+                    self.move_piece_quiet(Sq::D1, Sq::A1);
+                } else {
+                    self.move_piece_quiet(Sq::C8, Sq::E8);
+                    self.move_piece_quiet(Sq::D8, Sq::A8);
+                }
+            }
+            MoveFlag::Enpassant => {
+                self.move_piece_quiet(target, source);
+                let sq = target.add(Direction::South.relative(side));
+                self.add_piece(Some(Piece::from_type(opp, PieceType::Pawn)), Some(sq));
+            }
+            MoveFlag::PromKnight
+            | MoveFlag::PromBishop
+            | MoveFlag::PromRook
+            | MoveFlag::PromQueen => {
+                self.remove_piece(Some(target));
+                self.add_piece(Some(Piece::from_type(side, PieceType::Pawn)), Some(source));
+            }
+            MoveFlag::PromCapKnight
+            | MoveFlag::PromCapBishop
+            | MoveFlag::PromCapRook
+            | MoveFlag::PromCapQueen => {
+                self.remove_piece(Some(target));
+                self.add_piece(Some(Piece::from_type(side, PieceType::Pawn)), Some(source));
+                self.add_piece(self.history[self.game_ply].captured, Some(target));
+            }
+            MoveFlag::Capture => {
+                self.move_piece(target, source);
+                self.add_piece(self.history[self.game_ply].captured, Some(target));
+            }
+        }
+
+        self.state.change_side();
+        zobrist::update(ZobristAction::ChangeColor, self);
+        self.game_ply -= 1;
+    }
+
     pub fn display(&self) {
         println!("\n    +---+---+---+---+---+---+---+---+");
-        for r in 0..8 {
-            print!("  {} |", 8 - r);
+        for r in (0..8).rev() {
+        // for r in 0..8 {
+            print!("  {} |", r + 1);
             for f in 0..8 {
                 let piece = self.pos.mailbox[SQ!(r, f)];
                 let piece_char = Piece::to_char(piece);
@@ -234,36 +422,11 @@ impl Board {
                 "black"
             }
         );
-        self.print_castling();
-        if let Some(enpass) = self.state.enpassant {
+        if let Some(enpass) = self.enpassant() {
             println!("         Enpassant: {}", enpass);
         } else {
             println!("         Enpassant: none");
         }
-        println!("        Full Moves: {}\n", self.state.full_moves);
-    }
-
-    pub fn print_castling(&self) {
-        print!("          Castling: ");
-        if self.state.castling == 0 {
-            println!("none");
-            return;
-        }
-        let mut castling_ltrs = ['-', '-', '-', '-'];
-        let castling = self.state.castling as BB;
-        if castling.get(CastlingType::WhiteKingside as usize) {
-            castling_ltrs[CastlingType::WhiteKingside as usize] = 'K';
-        }
-        if castling.get(CastlingType::WhiteQueenside as usize) {
-            castling_ltrs[CastlingType::WhiteQueenside as usize] = 'Q';
-        }
-        if castling.get(CastlingType::BlackKingside as usize) {
-            castling_ltrs[CastlingType::BlackKingside as usize] = 'k';
-        }
-        if castling.get(CastlingType::BlackQueenside as usize) {
-            castling_ltrs[CastlingType::BlackQueenside as usize] = 'q';
-        }
-        println!("{}", castling_ltrs.iter().collect::<String>());
     }
 
     #[allow(dead_code)]
@@ -286,20 +449,19 @@ pub fn sq_attacked(pos: &Position, attack_info: &AttackInfo, sq: Sq, side: Piece
     assert!(side != PieceColor::Both);
     let both_units = pos.units(PieceColor::Both);
     if side == PieceColor::Light
-        && ((attack_info.pawn[PieceColor::Dark as usize][sq as usize]
-            & pos.bitboards[Piece::LP as usize])
+        && ((attack_info.get_pawn_attack(PieceColor::Dark, sq) & pos.bitboards[Piece::LP as usize])
             != 0)
     {
         return true;
     }
     if side == PieceColor::Dark
-        && ((attack_info.pawn[PieceColor::Light as usize][sq as usize]
+        && ((attack_info.get_pawn_attack(PieceColor::Light, sq)
             & pos.bitboards[Piece::DP as usize])
             != 0)
     {
         return true;
     }
-    if (attack_info.knight[sq as usize] & pos.bitboards[(side as usize) * 6 + 1]) != 0 {
+    if (attack_info.get_knight_attack(sq) & pos.bitboards[(side as usize) * 6 + 1]) != 0 {
         return true;
     }
     if (attack_info.get_bishop_attack(sq, both_units) & pos.bitboards[(side as usize) * 6 + 2]) != 0
@@ -313,7 +475,7 @@ pub fn sq_attacked(pos: &Position, attack_info: &AttackInfo, sq: Sq, side: Piece
     {
         return true;
     }
-    if (attack_info.king[sq as usize] & pos.bitboards[(side as usize) * 6 + 5]) != 0 {
+    if (attack_info.get_king_attack(sq) & pos.bitboards[(side as usize) * 6 + 5]) != 0 {
         return true;
     }
     false
