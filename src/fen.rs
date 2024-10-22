@@ -61,12 +61,14 @@ pub fn parse(fen: &str, board: &mut Board) {
     // zobrist::update(ZobristAction::Castling, board);
 
     // Set enpassant square
-    let enpass_square = fen_parts.next().unwrap();
-    if enpass_square != "-" {
-        board.history[board.game_ply].enpassant = Sq::from_str(enpass_square);
-    }
-    if let Some(sq) = board.enpassant() {
-        zobrist::update(ZobristAction::SetEnpassant(sq), board);
+    if let Some(enpass_square) = fen_parts.next() {
+        if enpass_square != "-" {
+            let enpass_sq = Sq::from_str(enpass_square);
+            board.history[board.game_ply].enpassant = enpass_sq;
+            zobrist::update(ZobristAction::SetEnpassant(enpass_sq.unwrap()), board);
+        }
+    } else {
+        board.history[board.game_ply].enpassant = None;
     }
     /*
     Not sure if I need this part . . .

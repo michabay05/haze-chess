@@ -7,7 +7,7 @@ use crate::moves::{Move, MoveFlag, MoveUtil};
 
 pub type MoveList = Vec<Move>;
 
-trait MoveListUtil {
+pub trait MoveListUtil {
     fn print(&self);
 }
 
@@ -50,10 +50,10 @@ pub fn generate_legal_moves(
     let our_ortho_sliders = board.orthogonal_sliders(side);
     let their_ortho_sliders = board.orthogonal_sliders(opp);
 
-    // Bitboards just for temporary storage
-    let mut b1 = 0;
-    let mut b2 = 0;
-    let mut b3 = 0;
+    // Bitboards used for temporary storage
+    let mut b1;
+    let mut b2;
+    let mut b3;
 
     let (rel_north, rel_south, rel_nw, rel_ne) = if side == PieceColor::Light {
         (
@@ -76,7 +76,8 @@ pub fn generate_legal_moves(
     let their_pawns = board.pos.bitboards[Piece::from_type(opp, PieceType::Pawn) as usize];
 
     // Get all squares attacked by the opponent's pawns
-    danger |= attack_info.get_all_pawn_attacks(opp, their_pawns) | attack_info.get_king_attack(their_king);
+    danger |= attack_info.get_all_pawn_attacks(opp, their_pawns)
+        | attack_info.get_king_attack(their_king);
 
     // Get all squares attacked by the opponent's knights
     b1 = board.pos.bitboards[Piece::from_type(opp, PieceType::Knight) as usize];
@@ -104,9 +105,8 @@ pub fn generate_legal_moves(
     add_all_moves(MoveFlag::Quiet, our_king, b1 & !them_bb, list);
     add_all_moves(MoveFlag::Capture, our_king, b1 & them_bb, list);
 
-    let mut capture_mask: BB = 0;
-    let mut quiet_mask: BB = 0;
-    let mut sq: Sq;
+    let mut capture_mask: BB;
+    let mut quiet_mask: BB;
 
     // Are the opponent's knights able to check our king?
     let mut checkers: BB = attack_info.get_knight_attack(our_king)
@@ -181,7 +181,9 @@ pub fn generate_legal_moves(
                     if let Some(p) = board.pos.mailbox[psq] {
                         let rank = Rank::Seven.relative(side) as usize;
                         let psq_sq = Sq::from_num(psq);
-                        if p.piece_type() == PieceType::Pawn && ((BB::from_sq(psq_sq) & MASK_RANK[rank]) != 0) {
+                        if p.piece_type() == PieceType::Pawn
+                            && ((BB::from_sq(psq_sq) & MASK_RANK[rank]) != 0)
+                        {
                             list.push(Move::encode(psq_sq, checker_sq, MoveFlag::PromCapQueen));
                             list.push(Move::encode(psq_sq, checker_sq, MoveFlag::PromCapRook));
                             list.push(Move::encode(psq_sq, checker_sq, MoveFlag::PromCapBishop));
@@ -193,8 +195,10 @@ pub fn generate_legal_moves(
                 }
                 return;
             } else {
+                println!("In here . . .");
                 capture_mask = checkers;
                 quiet_mask = attack_info.squares_between[our_king as usize][checker_sq as usize];
+                quiet_mask.print();
             }
         }
         _ => {
@@ -215,7 +219,10 @@ pub fn generate_legal_moves(
                     let blockers =
                         all_bb ^ BB::from_sq(Sq::from_num(sq)) ^ BB::from_sq(ep).shift(rel_south);
                     let mask = MASK_RANK[our_king.rank() as usize] & their_ortho_sliders;
-                    if attack_info.sliding_attack(Sq::from_num(sq), blockers, mask) & their_ortho_sliders == 0 {
+                    if attack_info.sliding_attack(Sq::from_num(sq), blockers, mask)
+                        & their_ortho_sliders
+                        == 0
+                    {
                         list.push(Move::encode(Sq::from_num(sq), ep, MoveFlag::Enpassant));
                     }
                 }
@@ -264,7 +271,8 @@ pub fn generate_legal_moves(
 
                 // Only include moves that align with the king
                 if let Some(p) = board.pos.mailbox[sq as usize] {
-                    b2 = attack_info.get_attack(side, p.piece_type(), sq, all_bb) & attack_info.line_of[our_king as usize][sq as usize];
+                    b2 = attack_info.get_attack(side, p.piece_type(), sq, all_bb)
+                        & attack_info.line_of[our_king as usize][sq as usize];
                     add_all_moves(MoveFlag::Quiet, sq, b2 & quiet_mask, list);
                     add_all_moves(MoveFlag::Capture, sq, b2 & capture_mask, list);
                 }
@@ -429,10 +437,12 @@ fn attackers_from(
     let b: BB;
     let r: BB;
     if side == PieceColor::Light {
-        p = attack_info.get_pawn_attack(side.opposite(), sq) & board.pos.bitboards[Piece::LP as usize];
+        p = attack_info.get_pawn_attack(side.opposite(), sq)
+            & board.pos.bitboards[Piece::LP as usize];
         n = attack_info.get_knight_attack(sq) & board.pos.bitboards[Piece::LN as usize];
     } else {
-        p = attack_info.get_pawn_attack(side.opposite(), sq) & board.pos.bitboards[Piece::DP as usize];
+        p = attack_info.get_pawn_attack(side.opposite(), sq)
+            & board.pos.bitboards[Piece::DP as usize];
         n = attack_info.get_knight_attack(sq) & board.pos.bitboards[Piece::DN as usize];
     }
     b = attack_info.get_bishop_attack(sq, blocker_board) & board.diagonal_sliders(side);
@@ -460,17 +470,17 @@ mod tests {
 
         use PieceColor::{Dark, Light};
         let arr = [
-            // (8, Light, "8/2k5/8/8/8/8/2K5/8 w - - 0 1"),
-            // (37, Light, "8/2k5/2qb4/8/8/P2Q4/KP3B2/8 w - - 0 1"),
-            (1, Light, "8/5pb1/2bk2p1/4p1N1/3N4/4P3/1K3R2/8 w - - 0 1"),
+             (8, Light, "8/2k5/8/8/8/8/2K5/8 w - - 0 1"),
+             (37, Light, "8/2k5/2qb4/8/8/P2Q4/KP3B2/8 w - - 0 1"),
+             (34, Light, "8/5pb1/2bk2p1/4p1N1/3N4/4P3/1K3R2/8 w - - 0 1"),
+             (16, Dark, "8/2k5/3b4/8/8/8/2K5/8 b - - 0 1"),
 
-            // (16, Dark, "8/2k5/3b4/8/8/8/2K5/8 b - - 0 1"),
-            // // Double check test
-            // (3, Dark, "8/1b6/3kn1p1/5r2/8/B2QK3/7p/8 b - - 0 1"),
-            // // Single check test
-            // (8, Dark, "8/1b6/3kn1p1/5r2/8/3QK3/7p/8 w - - 0 1")
-            // // Quiet and capture promotion test
-            // (43, Dark, "8/1b6/3kn1p1/5r2/8/2Q1K3/7p/6N1 b - - 0 1")
+             // Double check test
+             (3, Dark, "8/1b6/3kn1p1/5r2/8/B2QK3/7p/8 b - - 0 1"),
+             // Single check test
+             (8, Dark, "8/1b6/3kn1p1/5r2/8/3QK3/7p/8 w - - 0 1"),
+             // Quiet and capture promotion test
+             (43, Dark, "8/1b6/3kn1p1/5r2/8/2Q1K3/7p/6N1 b - - 0 1")
         ];
         for (expected, side, fen) in arr {
             b.set_fen(fen);

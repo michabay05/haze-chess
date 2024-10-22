@@ -4,19 +4,6 @@ use crate::attack;
 use crate::consts::{PieceType, Sq};
 use crate::prng::PRNG;
 
-fn xor_random_u32(random_state: &mut u32) -> u32 {
-    let mut number = *random_state;
-    // XOR shift algorithm
-    number ^= number << 13;
-    number ^= number >> 17;
-    number ^= number << 5;
-
-    // Update random number state
-    *random_state = number;
-
-    number
-}
-
 const XOR_RANDOM_SEED: u32 = 1804289383;
 
 #[allow(unused_assignments)]

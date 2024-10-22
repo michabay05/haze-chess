@@ -48,6 +48,7 @@ impl Position {
     }
 }
 
+// TODO: remove this struct, it's unnecessary
 #[derive(Clone)]
 pub struct State {
     pub side: PieceColor,
@@ -404,7 +405,7 @@ impl Board {
     pub fn display(&self) {
         println!("\n    +---+---+---+---+---+---+---+---+");
         for r in (0..8).rev() {
-        // for r in 0..8 {
+            // for r in 0..8 {
             print!("  {} |", r + 1);
             for f in 0..8 {
                 let piece = self.pos.mailbox[SQ!(r, f)];
@@ -503,4 +504,89 @@ pub fn print_attacked_sqs(board: &Board, attack_info: &AttackInfo, side: PieceCo
     }
     println!("     - - - - - - - -");
     println!("     a b c d e f g h\n");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::fen;
+    use super::{AttackInfo, BB, BBUtil, Board, Move, MoveUtil, MoveFlag, Piece, PieceColor, Sq};
+
+    #[test]
+    fn board_manipulation() {
+        let mut attack_info = AttackInfo::new();
+        attack_info.init();
+        let mut b = Board::new();
+
+        assert_eq!(b.game_ply, 0);
+        assert_eq!(b.state.side, PieceColor::Light);
+        assert_eq!(b.state.key, 0);
+        assert_eq!(b.state.lock, 0);
+        assert_eq!(b.pos.bitboards.iter().any(|x| *x != 0), false);
+        assert_eq!(b.pos.mailbox.iter().any(|x| x.is_some()), false);
+
+        b.add_piece(Some(Piece::LN), Some(Sq::F3));
+        assert_eq!(b.pos.mailbox[Sq::F3 as usize], Some(Piece::LN));
+        assert_eq!(b.pos.bitboards[Piece::LN as usize], BB::from_sq(Sq::F3));
+
+        b.remove_piece(Some(Sq::F3));
+        assert_eq!(b.pos.mailbox[Sq::F3 as usize], None);
+        assert_eq!(b.pos.bitboards[Piece::LN as usize], 0);
+
+        // white is in check
+        b.set_fen("rnb1kbnr/pppp1ppp/8/4p3/4PP1q/8/PPPP2PP/RNBQKBNR w KQkq");
+        assert_eq!(b.is_in_check(&attack_info, PieceColor::Light), false);
+        assert_eq!(b.is_in_check(&attack_info, PieceColor::Dark), true);
+
+        // blocked
+        b.set_fen("rnb1kbnr/pppp1ppp/8/4p3/4PP1q/6P1/PPPP3P/RNBQKBNR b KQkq");
+        assert_eq!(b.is_in_check(&attack_info, PieceColor::Light), false);
+        assert_eq!(b.is_in_check(&attack_info, PieceColor::Dark), false);
+
+        // Re-set board from the starting position
+        b.set_fen(fen::FEN_POSITIONS[1]);
+        let mut mv = Move::encode(Sq::D2, Sq::D4, MoveFlag::Quiet);
+        assert_eq!(b.state.side, PieceColor::Light);
+        b.play_move(PieceColor::Light, mv);
+        assert_eq!(b.pos.mailbox[Sq::D2 as usize], None);
+        assert_eq!(b.pos.mailbox[Sq::D4 as usize], Some(Piece::LP));
+        assert_eq!(b.pos.bitboards[Piece::LP as usize].get(Sq::D2 as usize), false);
+        assert_eq!(b.pos.bitboards[Piece::LP as usize].get(Sq::D4 as usize), true);
+        assert_eq!(b.state.side, PieceColor::Dark);
+
+        b.undo_move(PieceColor::Light, mv);
+        assert_eq!(b.pos.mailbox[Sq::D2 as usize], Some(Piece::LP));
+        assert_eq!(b.pos.mailbox[Sq::D4 as usize], None);
+        assert_eq!(b.pos.bitboards[Piece::LP as usize].get(Sq::D2 as usize), true);
+        assert_eq!(b.pos.bitboards[Piece::LP as usize].get(Sq::D4 as usize), false);
+        assert_eq!(b.state.side, PieceColor::Light);
+
+        // Setup a different position
+        b.set_fen(fen::FEN_POSITIONS[2]);
+        mv = Move::encode(Sq::E2, Sq::A6, MoveFlag::Capture);
+        b.play_move(PieceColor::Light, mv);
+        mv = Move::encode(Sq::B4, Sq::C3, MoveFlag::Capture);
+        b.play_move(PieceColor::Dark, mv);
+        mv = Move::encode(Sq::D2, Sq::C3, MoveFlag::Capture);
+        b.play_move(PieceColor::Light, mv);
+        mv = Move::encode(Sq::B6, Sq::C8, MoveFlag::Quiet);
+        b.play_move(PieceColor::Dark, mv);
+
+        assert_eq!(b.pos.bitboards[Piece::LB as usize], BB::from_sq(Sq::A6) | BB::from_sq(Sq::C3));
+        assert_eq!(b.pos.bitboards[Piece::LN as usize], BB::from_sq(Sq::E5));
+        assert_eq!(b.pos.bitboards[Piece::DB as usize], BB::from_sq(Sq::G7));
+        assert_eq!(b.pos.bitboards[Piece::DN as usize], BB::from_sq(Sq::C8) | BB::from_sq(Sq::F6));
+        assert_eq!(b.pos.bitboards[Piece::DP as usize].get(Sq::C3 as usize), false);
+        assert_eq!(b.game_ply, 4);
+
+        mv = Move::encode(Sq::B6, Sq::C8, MoveFlag::Quiet);
+        b.undo_move(PieceColor::Dark, mv);
+        mv = Move::encode(Sq::D2, Sq::C3, MoveFlag::Capture);
+        b.undo_move(PieceColor::Light, mv);
+        assert_eq!(b.pos.bitboards[Piece::LB as usize], BB::from_sq(Sq::A6) | BB::from_sq(Sq::D2));
+        assert_eq!(b.pos.bitboards[Piece::LN as usize], BB::from_sq(Sq::E5));
+        assert_eq!(b.pos.bitboards[Piece::DB as usize], BB::from_sq(Sq::G7));
+        assert_eq!(b.pos.bitboards[Piece::DN as usize], BB::from_sq(Sq::B6) | BB::from_sq(Sq::F6));
+        assert_eq!(b.pos.bitboards[Piece::DP as usize].get(Sq::C3 as usize), true);
+        assert_eq!(b.game_ply, 2);
+    }
 }

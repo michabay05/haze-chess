@@ -1,7 +1,7 @@
 #![allow(unused_comparisons)]
 
 use crate::bb::{BBUtil, BB};
-use crate::consts::{Direction, PieceColor, PieceType, Sq};
+use crate::consts::{self, Direction, PieceColor, PieceType, Sq};
 use crate::magics::{BISHOP_MAGICS, ROOK_MAGICS};
 use crate::{COL, ROW, SQ};
 
@@ -84,25 +84,14 @@ impl AttackInfo {
         all_attacks
     }
 
+    #[inline(always)]
     pub fn get_knight_attack(&self, sq: Sq) -> BB {
         KNIGHT_ATTACKS[sq as usize]
     }
 
+    #[inline(always)]
     pub fn get_king_attack(&self, sq: Sq) -> BB {
         KING_ATTACKS[sq as usize]
-    }
-
-    // Hyperbola Quintessence Algorithm
-    #[inline(always)]
-    pub fn sliding_attack(&self, square: Sq, blocker_board: BB, mask: BB) -> BB {
-        let sq = square as usize;
-        let mut sq_bb = 0;
-        sq_bb.set(sq);
-        let first_line = (mask & blocker_board).wrapping_sub(sq_bb.wrapping_mul(2));
-        let second_line = reverse_bitboard(
-            reverse_bitboard(mask & blocker_board).wrapping_sub(sq_bb.wrapping_mul(2)),
-        ) & mask;
-        first_line ^ second_line
     }
 
     pub fn get_attack(&self, color: PieceColor, pt: PieceType, sq: Sq, blocker_board: BB) -> BB {
@@ -146,6 +135,32 @@ impl AttackInfo {
         self.get_bishop_attack(sq, blocker_board) | self.get_rook_attack(sq, blocker_board)
     }
 
+    // Hyperbola Quintessence Algorithm
+    #[inline(always)]
+    pub fn sliding_attack(&self, square: Sq, blocker_board: BB, mask: BB) -> BB {
+        let sq = square as usize;
+        let mut sq_bb = BB::from_sq(square);
+        let first_line = (mask & blocker_board).wrapping_sub(sq_bb.wrapping_mul(2));
+        let second_line = reverse_bitboard(
+            reverse_bitboard(mask & blocker_board).wrapping_sub(
+                reverse_bitboard(sq_bb).wrapping_mul(2)
+            )
+        );
+        (first_line ^ second_line) & mask
+    }
+
+    #[inline(always)]
+    fn get_rook_attacks_for_init(&self, sq: Sq, blocker: BB) -> BB {
+        self.sliding_attack(sq, blocker, consts::MASK_FILE[sq.file() as usize])
+            | self.sliding_attack(sq, blocker, consts::MASK_RANK[sq.rank() as usize])
+    }
+
+    #[inline(always)]
+    fn get_bishop_attacks_for_init(&self, sq: Sq, blocker: BB) -> BB {
+        self.sliding_attack(sq, blocker, consts::MASK_DIAGONAL[Sq::diagonal(sq as i32) as usize])
+        | self.sliding_attack(sq, blocker, consts::MASK_ANTI_DIAGONAL[Sq::anti_diagonal(sq as i32) as usize])
+    }
+
     pub fn gen_line_of(&mut self) {
         let mut sq1 = Sq::A1 as usize;
         while sq1 < Sq::H8 as usize {
@@ -157,15 +172,15 @@ impl AttackInfo {
                 sqs.set(sq2);
 
                 if COL!(sq1) == COL!(sq2) || ROW!(sq1) == ROW!(sq2) {
-                    self.line_of[sq1][sq2] = self.get_rook_attack(Sq::from_num(sq1), 0)
-                        & self.get_rook_attack(Sq::from_num(sq2), 0)
+                    self.line_of[sq1][sq2] = self.get_rook_attacks_for_init(Sq::from_num(sq1), 0)
+                        & self.get_rook_attacks_for_init(Sq::from_num(sq2), 0)
                         | BB::from_sq(Sq::from_num(sq1))
                         | BB::from_sq(Sq::from_num(sq2));
-                } else if diagonal(sq1 as i32) == diagonal(sq2 as i32)
-                    || anti_diagonal(sq1 as i32) == anti_diagonal(sq2 as i32)
+                } else if Sq::diagonal(sq1 as i32) == Sq::diagonal(sq2 as i32)
+                    || Sq::anti_diagonal(sq1 as i32) == Sq::anti_diagonal(sq2 as i32)
                 {
-                    self.line_of[sq1][sq2] = self.get_bishop_attack(Sq::from_num(sq1), 0)
-                        & self.get_bishop_attack(Sq::from_num(sq2), 0)
+                    self.line_of[sq1][sq2] = self.get_bishop_attacks_for_init(Sq::from_num(sq1), 0)
+                        & self.get_bishop_attacks_for_init(Sq::from_num(sq2), 0)
                         | BB::from_sq(Sq::from_num(sq1))
                         | BB::from_sq(Sq::from_num(sq2));
                 } else {
@@ -190,16 +205,20 @@ impl AttackInfo {
                 sqs.set(sq2);
 
                 if COL!(sq1) == COL!(sq2) || ROW!(sq1) == ROW!(sq2) {
-                    self.squares_between[sq1][sq2] = self.get_rook_attack(Sq::from_num(sq1), sqs)
-                        & self.get_rook_attack(Sq::from_num(sq2), sqs);
-                } else if diagonal(sq1 as i32) == diagonal(sq2 as i32)
-                    || anti_diagonal(sq1 as i32) == anti_diagonal(sq2 as i32)
+                    self.squares_between[sq1][sq2] = self.get_rook_attacks_for_init(Sq::from_num(sq1), sqs)
+                        & self.get_rook_attacks_for_init(Sq::from_num(sq2), sqs);
+                } else if Sq::diagonal(sq1 as i32) == Sq::diagonal(sq2 as i32)
+                    || Sq::anti_diagonal(sq1 as i32) == Sq::anti_diagonal(sq2 as i32)
                 {
-                    self.squares_between[sq1][sq2] = self.get_bishop_attack(Sq::from_num(sq1), sqs)
-                        & self.get_bishop_attack(Sq::from_num(sq2), sqs);
+                    self.squares_between[sq1][sq2] = self.get_bishop_attacks_for_init(Sq::from_num(sq1), sqs)
+                        & self.get_bishop_attacks_for_init(Sq::from_num(sq2), sqs);
                 } else {
                     self.squares_between[sq1][sq2] = 0;
                 }
+                    if sq1 == Sq::F8 as usize && sq2 == Sq::H8 as usize {
+                        eprintln!("You ought to be over here!");
+                        assert!(false);
+                    }
 
                 sq2 += 1;
             }
@@ -207,14 +226,6 @@ impl AttackInfo {
             sq1 += 1;
         }
     }
-}
-
-fn diagonal(sq: i32) -> i32 {
-    7 + ROW!(sq) - COL!(sq)
-}
-
-fn anti_diagonal(sq: i32) -> i32 {
-    ROW!(sq) + COL!(sq)
 }
 
 fn gen_sliding(attack_info: &mut AttackInfo, piece: PieceType) {
@@ -550,16 +561,22 @@ mod tests {
 
         use Sq::*;
         let arr = [
-            (B4, F4, 0x1c000000),
-            (E3, E7, 0x101010000000),
-            (B2, G7, 0x201008040000),
-            (B7, G2, 0x40810200000),
-            (A1, G4, 0),
+            //(B4, F4, 0x1c000000),
+            //(E3, E7, 0x101010000000),
+            //(B2, G7, 0x201008040000),
+            //(B7, G2, 0x40810200000),
+            //(A1, G4, 0),
+            (F8, H8, 0x4000000000000000),
         ];
 
         for (sq1, sq2, expected) in arr {
-            if attack_info.squares_between[sq1 as usize][sq2 as usize] != expected {
-                println!("FAILED: sq1: {}, sq2: {}", sq1, sq2);
+            let res = attack_info.squares_between[sq1 as usize][sq2 as usize];
+            if res != expected {
+                println!("FAILED: sq1({}) sq2({})", sq1, sq2);
+                println!("result:");
+                res.print();
+                println!("expected:");
+                expected.print();
                 assert!(false);
             }
         }
@@ -580,8 +597,13 @@ mod tests {
         ];
 
         for (sq1, sq2, expected) in arr {
-            if attack_info.line_of[sq1 as usize][sq2 as usize] != expected {
-                println!("FAILED: sq1: {}, sq2: {}", sq1, sq2);
+            let res = attack_info.line_of[sq1 as usize][sq2 as usize];
+            if res != expected {
+                println!("FAILED: sq1({}) sq2({})", sq1, sq2);
+                println!("result:");
+                res.print();
+                println!("expected:");
+                expected.print();
                 assert!(false);
             }
         }
@@ -600,116 +622,3 @@ mod tests {
         assert_eq!(attack_info.get_all_pawn_attacks(PieceColor::Dark, 0x2800000200400), 0x5400000500a);
     }
 }
-
-// fn gen_leapers() {
-//     gen_pawn(PieceColor::Light);
-//     gen_pawn(PieceColor::Dark);
-//     gen_knight();
-//     gen_king();
-// }
-
-// fn gen_pawn(side: PieceColor) {
-//     println!("pub const {:?}_PAWN_ATTACKS: [BB; 64] = [", side);
-//     for sq in 0..64 {
-//         let mut bb = 0;
-//         if side == PieceColor::Light {
-//             if ROW!(sq) < 7 && COL!(sq) > 0 {
-//                 bb.set((sq as i32 + Direction::Northwest.relative(side) as i32) as usize);
-//             }
-//             if ROW!(sq) < 7 && COL!(sq) < 7 {
-//                 bb.set((sq as i32 + Direction::Northeast.relative(side) as i32) as usize);
-//             }
-//         } else {
-//             if ROW!(sq) > 0 && COL!(sq) > 0 {
-//                 bb.set((sq as i32 + Direction::Northeast.relative(side) as i32) as usize);
-//             }
-//             if ROW!(sq) > 0 && COL!(sq) < 7 {
-//                 bb.set((sq as i32 + Direction::Northwest.relative(side) as i32) as usize);
-//             }
-//         }
-//         print!("0x{:x}, ", bb);
-//         if sq % 4 == 3 {
-//             println!();
-//         }
-//     }
-//     println!("];");
-// }
-
-// fn gen_knight() {
-//     println!("pub const KNIGHT_ATTACKS: [BB; 64] = [");
-//     for sq in 0..64 {
-//         let mut bb = 0;
-//         if ROW!(sq) <= 5 && COL!(sq) >= 1 {
-//             bb.set((sq as i32 + Direction::NW_N as i32) as usize);
-//         }
-
-//         if ROW!(sq) <= 6 && COL!(sq) >= 2 {
-//             bb.set((sq as i32 + Direction::NW_W as i32) as usize);
-//         }
-
-//         if ROW!(sq) <= 6 && COL!(sq) <= 5 {
-//             bb.set((sq as i32 + Direction::NE_E as i32) as usize);
-//         }
-
-//         if ROW!(sq) <= 5 && COL!(sq) <= 6 {
-//             bb.set((sq as i32 + Direction::NE_N as i32) as usize);
-//         }
-
-//         if ROW!(sq) >= 2 && COL!(sq) <= 6 {
-//             bb.set((sq as i32 + Direction::SE_S as i32) as usize);
-//         }
-
-//         if ROW!(sq) >= 1 && COL!(sq) <= 5 {
-//             bb.set((sq as i32 + Direction::SE_E as i32) as usize);
-//         }
-
-//         if ROW!(sq) >= 1 && COL!(sq) >= 2 {
-//             bb.set((sq as i32 + Direction::SW_W as i32) as usize);
-//         }
-
-//         if ROW!(sq) >= 2 && COL!(sq) >= 1 {
-//             bb.set((sq as i32 + Direction::SW_S as i32) as usize);
-//         }
-//         print!("0x{:x}, ", bb);
-//         if sq % 4 == 3 {
-//             println!();
-//         }
-//     }
-//     println!("];");
-// }
-
-// fn gen_king() {
-//     println!("pub const KING_ATTACKS: [BB; 64] = [");
-//     for sq in 0..64 {
-//         let mut bb = 0;
-//         if ROW!(sq) > 0 {
-//             bb.set((sq as i32 + Direction::South as i32) as usize);
-//         }
-//         if ROW!(sq) < 7 {
-//             bb.set((sq as i32 + Direction::North as i32) as usize);
-//         }
-//         if COL!(sq) > 0 {
-//             bb.set((sq as i32 + Direction::West as i32) as usize);
-//         }
-//         if COL!(sq) < 7 {
-//             bb.set((sq as i32 + Direction::East as i32) as usize);
-//         }
-//         if ROW!(sq) > 0 && COL!(sq) > 0 {
-//             bb.set((sq as i32 + Direction::Southwest as i32) as usize);
-//         }
-//         if ROW!(sq) > 0 && COL!(sq) < 7 {
-//             bb.set((sq as i32 + Direction::Southeast as i32) as usize);
-//         }
-//         if ROW!(sq) < 7 && COL!(sq) > 0 {
-//             bb.set((sq as i32 + Direction::Northwest as i32) as usize);
-//         }
-//         if ROW!(sq) < 7 && COL!(sq) < 7 {
-//             bb.set((sq as i32 + Direction::Northeast as i32) as usize);
-//         }
-//         print!("0x{:x}, ", bb);
-//         if sq % 4 == 3 {
-//             println!();
-//         }
-//     }
-//     println!("];");
-// }

@@ -151,6 +151,33 @@ pub fn play_move(
 ) -> bool {
     false
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{Move, MoveFlag, MoveUtil, Sq};
+
+    #[test]
+    fn move_encode() {
+        let mut mv: Move = 0;
+        assert_eq!(mv.source(), Sq::A1);
+        assert_eq!(mv.target(), Sq::A1);
+
+        mv = Move::encode(Sq::G1, Sq::F3, MoveFlag::Quiet);
+        assert_eq!(mv.source(), Sq::G1);
+        assert_eq!(mv.target(), Sq::F3);
+        assert_eq!(mv.flag(), MoveFlag::Quiet);
+
+        mv = Move::encode(Sq::E2, Sq::E4, MoveFlag::DoublePush);
+        assert_eq!(mv.source(), Sq::E2);
+        assert_eq!(mv.target(), Sq::E4);
+        assert_eq!(mv.flag(), MoveFlag::DoublePush);
+
+        mv = Move::encode(Sq::E4, Sq::E5, MoveFlag::Capture);
+        assert_eq!(mv.source(), Sq::E4);
+        assert_eq!(mv.target(), Sq::E5);
+        assert_eq!(mv.flag(), MoveFlag::Capture);
+    }
+}
 // ) -> bool {
 //     if move_flag == MoveType::AllMoves {
 //         let clone = main.clone();

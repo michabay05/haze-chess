@@ -58,7 +58,7 @@ pub enum PieceType {
     King,
 }
 
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Piece {
     LP,
     LN,
@@ -282,7 +282,7 @@ impl Rank {
 }
 
 #[rustfmt::skip]
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Sq {
     A1, B1, C1, D1, E1, F1, G1, H1,
     A2, B2, C2, D2, E2, F2, G2, H2,
@@ -328,6 +328,16 @@ impl Sq {
     #[inline(always)]
     pub fn file(self) -> File {
         File::from_num(COL!(self as usize))
+    }
+
+    #[inline(always)]
+    pub fn diagonal(sq: i32) -> i32 {
+        7 + ROW!(sq) - COL!(sq)
+    }
+
+    #[inline(always)]
+    pub fn anti_diagonal(sq: i32) -> i32 {
+        ROW!(sq) + COL!(sq)
     }
 
     #[inline(always)]
@@ -432,4 +442,20 @@ pub const MASK_FILE: [BB; 8] = [
 pub const MASK_RANK: [BB; 8] = [
     0xff, 0xff00, 0xff0000, 0xff000000,
     0xff00000000, 0xff0000000000, 0xff000000000000, 0xff00000000000000
+];
+
+pub const MASK_DIAGONAL: [BB; 15] = [
+    0x80, 0x8040, 0x804020,
+    0x80402010, 0x8040201008, 0x804020100804,
+    0x80402010080402, 0x8040201008040201, 0x4020100804020100,
+    0x2010080402010000, 0x1008040201000000, 0x804020100000000,
+    0x402010000000000, 0x201000000000000, 0x100000000000000,
+];
+
+pub const MASK_ANTI_DIAGONAL: [BB; 15] = [
+    0x1, 0x102, 0x10204,
+    0x1020408, 0x102040810, 0x10204081020,
+    0x1020408102040, 0x102040810204080, 0x204081020408000,
+    0x408102040800000, 0x810204080000000, 0x1020408000000000,
+    0x2040800000000000, 0x4080000000000000, 0x8000000000000000,
 ];

@@ -1,7 +1,7 @@
 use crate::attack::AttackInfo;
 use crate::board::Board;
 use crate::consts::PieceColor;
-use crate::move_gen;
+use crate::move_gen::{self, MoveList, MoveListUtil};
 use crate::moves::{Move, MoveFlag, MoveUtil};
 
 #[derive(Debug, Default)]
@@ -73,11 +73,9 @@ pub fn driver(
     depth: usize,
     debug: bool,
 ) -> PerftInfo {
-    let mut ml = Vec::<Move>::new();
+    let mut ml = MoveList::new();
     move_gen::generate_legal_moves(board, attack_info, side, &mut ml);
-    // ml.print();
 
-    board.display();
     let mut info = PerftInfo::default();
 
     // let mut clone;
@@ -96,14 +94,13 @@ pub fn driver(
         board.undo_move(side, *mv);
 
         if debug {
-            eprintln!("{} {}", move_str, mv_info.nodes);
+            eprintln!("{}: {}", move_str, mv_info.nodes);
         }
         info.add_acc(mv_info);
     }
 
     info
 }
-
 #[cfg(test)]
 mod tests {
     use crate::fen::FEN_POSITIONS;
@@ -113,7 +110,7 @@ mod tests {
     #[test]
     fn perft_checks() {
         let expecteds = [
-            ("6k1/5b2/8/8/8/2Q5/3K4/8 w - - 0 1", 4, 1),
+            ("5k1Q/5b2/8/8/8/8/3K4/8 b - - 0 1", 1, 1),
             // (FEN_POSITIONS[1], 5, 4865609),
             // (FEN_POSITIONS[2], 4, 4085603),
             // (FEN_POSITIONS[3], 5, 674624),

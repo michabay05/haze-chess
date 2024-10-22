@@ -1,3 +1,5 @@
+use std::fmt;
+
 use crate::consts::{Direction, File, Sq, MASK_FILE};
 use crate::SQ;
 
@@ -12,7 +14,6 @@ pub trait BBUtil {
     fn lsb(&self) -> usize;
     fn pop_lsb(&mut self) -> usize;
     fn shift(&self, dir: Direction) -> Self;
-    #[allow(dead_code)]
     fn print(&self);
 }
 
@@ -80,6 +81,7 @@ impl BBUtil for BB {
         }
     }
 
+    #[allow(dead_code)]
     fn print(&self) {
         for r in (0..8).rev() {
             print!(" {} |", r + 1);
@@ -121,6 +123,7 @@ mod bb_tests {
             (Light, C5, Northwest, B6),
             (Light, C5, Southeast, D4),
             (Light, C5, Southwest, B4),
+
             (Dark, C7, NorthNorth, C5),
             (Dark, H2, SouthSouth, H4),
             (Dark, E5, North, E4),
@@ -139,18 +142,18 @@ mod bb_tests {
             bb = 0;
             expected = 0;
             bb.set(sq as usize);
-            bb.shift(dir.relative(side));
+            let res = bb.shift(dir.relative(side));
             expected.set(shifted as usize);
-            if bb != expected {
+            if res != expected {
                 eprintln!(
                     "[{:?}] {} shifted {:?} = {} (expected = {})",
                     side,
                     sq,
                     dir,
-                    Sq::from_num(bb.lsb()),
+                    Sq::from_num(res.lsb()),
                     Sq::from_num(expected.lsb())
                 );
-                bb.print();
+                res.print();
                 eprintln!("-----------------------");
                 expected.print();
                 assert!(false);
