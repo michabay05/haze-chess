@@ -7,7 +7,7 @@ edition = "2021"
 [lib]
 name = "chess"
 path = "src/chess/lib.rs"
-crate-type = ["lib"]
+crate-type = ["cdylib"]
 
 [[bin]]
 name = "engine"
