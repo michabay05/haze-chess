@@ -1,8 +1,8 @@
-use crate::attack::AttackInfo;
-use crate::bb::{BBUtil, BB};
-use crate::board::Position;
-use crate::consts::{Piece, PieceColor, Sq};
-use crate::{FLIP_SQ, ROW, SQ};
+use chess::attack::AttackInfo;
+use chess::bb::{BBUtil, BB};
+use chess::board::Position;
+use chess::consts::{Piece, PieceColor, Sq};
+use chess::{FLIP_SQ, ROW, SQ};
 
 #[derive(Debug)]
 enum Phase {
@@ -65,7 +65,7 @@ impl EvalMasks {
 }
 
 fn set_file_and_rank(rank: i32, file: i32) -> BB {
-    let mut mask = 0;
+    let mut mask: BB = 0;
     for r in 0..8 {
         for f in 0..8 {
             let sq = SQ!(r, f);

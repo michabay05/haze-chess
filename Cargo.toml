@@ -1,8 +1,16 @@
 [package]
-name = "haze-chess"
+name = "haze"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+name = "chess"
+path = "src/chess/lib.rs"
+crate-type = ["lib"]
+
+[[bin]]
+name = "engine"
+path = "src/engine/mod.rs"
 
 [dependencies]

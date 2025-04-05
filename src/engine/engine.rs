@@ -1,5 +1,5 @@
-use crate::attack::AttackInfo;
-use crate::board::Board;
+use chess::attack::AttackInfo;
+use chess::board::Board;
 use crate::eval::EvalMasks;
 use crate::search::SearchInfo;
 use crate::uci::UCIState;

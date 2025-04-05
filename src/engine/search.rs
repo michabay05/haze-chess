@@ -1,15 +1,15 @@
-use crate::attack::AttackInfo;
-use crate::bb::BBUtil;
-use crate::board::{self, Board};
-use crate::consts::{Piece, PieceColor, Sq};
+use chess::attack::AttackInfo;
+use chess::bb::BBUtil;
+use chess::board::{self, Board};
+use chess::consts::{Piece, PieceColor, Sq};
 use crate::eval::{self, EvalMasks};
 use crate::engine::Engine;
-use crate::move_gen::{self, MoveList};
-use crate::moves::{self, Move, MoveFlag, MoveUtil};
+use chess::move_gen::{self, MoveList};
+use chess::moves::{self, Move, MoveFlag, MoveUtil};
 use crate::threads;
 use crate::tt::{HashTT, TTFlag};
 use crate::uci::{self, UCIState};
-use crate::zobrist::{ZobristInfo, self, ZobristAction};
+use chess::zobrist::{ZobristInfo, self, ZobristAction};
 
 use std::sync::{Arc, RwLock};
 
@@ -44,7 +44,7 @@ pub struct SearchInfo {
     pub killer: [[Move; MAX_SEARCH_PLY]; 2], // [id][ply]
     pub history: [[Move; 64]; 12],    // [piece][sq]
     pub pv_len: [u32; MAX_SEARCH_PLY],
-    pub pv_table: [[u32; MAX_SEARCH_PLY]; MAX_SEARCH_PLY],
+    pub pv_table: [[Move; MAX_SEARCH_PLY]; MAX_SEARCH_PLY],
     pub tt: Arc<RwLock<HashTT>>,
 }
 

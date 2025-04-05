@@ -1,4 +1,5 @@
-use crate::{board::Board, search};
+use chess::board::Board;
+use crate::search;
 
 #[derive(Copy, Clone, Default, PartialEq)]
 pub enum TTFlag {

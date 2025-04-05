@@ -1,20 +1,10 @@
-mod attack;
-mod bb;
-mod board;
-mod consts;
 mod engine;
 mod eval;
-mod fen;
-mod magics;
-mod move_gen;
-mod moves;
 mod perft;
-mod prng;
 mod search;
 mod threads;
 mod tt;
 mod uci;
-mod zobrist;
 
 use std::io::{self, Write};
 

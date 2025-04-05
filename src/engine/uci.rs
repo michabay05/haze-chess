@@ -1,9 +1,9 @@
-use crate::consts::{Piece, PieceColor, Sq};
+use chess::consts::{Piece, PieceColor, Sq};
 use crate::engine::Engine;
 use crate::eval;
-use crate::fen::FEN_POSITIONS;
-use crate::move_gen::{self, MoveList};
-use crate::moves::{self, Move};
+use chess::fen::FEN_POSITIONS;
+use chess::move_gen::{self, MoveList};
+use chess::moves::{self, Move};
 use crate::perft;
 use crate::search::{self, MAX_SEARCH_PLY};
 use crate::threads;

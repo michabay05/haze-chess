@@ -1,7 +1,7 @@
-use crate::attack::AttackInfo;
-use crate::board::Board;
-use crate::move_gen::{self, MoveList};
-use crate::moves::{self, MoveFlag, MoveUtil};
+use chess::attack::AttackInfo;
+use chess::board::Board;
+use chess::move_gen::{self, MoveList};
+use chess::moves::{self, MoveFlag, MoveUtil};
 
 fn driver(
     board: &mut Board,
