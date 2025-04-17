@@ -4,7 +4,8 @@ use crate::eval::EvalMasks;
 use crate::search::SearchInfo;
 use crate::uci::UCIState;
 
-use crate::NUM_OF_THREADS;
+pub const VERSION: &str = "0.3";
+const NUM_OF_THREADS: usize = 1;
 
 use std::sync::{Arc, RwLock};
 use std::thread::JoinHandle;

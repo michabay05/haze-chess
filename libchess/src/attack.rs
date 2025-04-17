@@ -90,7 +90,6 @@ fn gen_leapers(attack_info: &mut AttackInfo) {
         gen_king(attack_info, sq);
     }
 }
-
 fn gen_sliding(attack_info: &mut AttackInfo, piece: PieceType) {
     for sq in 0..64 {
         attack_info.bishop_occ_mask[sq] = gen_bishop_occ(sq);
@@ -98,6 +97,7 @@ fn gen_sliding(attack_info: &mut AttackInfo, piece: PieceType) {
 
         let curr_mask = if piece == PieceType::Bishop {
             attack_info.bishop_occ_mask[sq]
+
         } else {
             attack_info.rook_occ_mask[sq]
         };

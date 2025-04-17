@@ -7,7 +7,7 @@ use chess::moves::{self, Move};
 use crate::perft;
 use crate::search::{self, MAX_SEARCH_PLY};
 use crate::threads;
-use crate::VERSION;
+use crate::engine::VERSION;
 
 use std::time::{Duration, SystemTime, SystemTimeError};
 
@@ -298,7 +298,7 @@ fn parse_param(cmd: &str, name: &str) -> Option<u32> {
 }
 
 pub fn print_author_info() {
-    println!("id name haze {}", VERSION);
+    println!("id name engine {}", VERSION);
     println!("id author michabay05");
     println!("option name Hash type spin default 256 min 1 max 1024");
     println!("option name Thread type spin default 1 min 1 max 4");
@@ -309,9 +309,9 @@ fn print_help() {
     println!();
     println!("              Command name               |               Description");
     println!("=========================================|=============================================================");
-    println!("                  uci                    |    Returns engine info accompanied with 'uciok'");
+    println!("                  uci                    |    Returns libengine info accompanied with 'uciok'");
     println!(
-        "              isready                    |    Returns 'readyok' if the engine is ready"
+        "              isready                    |    Returns 'readyok' if the libengine is ready"
     );
     println!("    position startpos                    |    Set board to starting position");
     println!("    position startpos moves <move1> ...  |    Set board to starting position then playing the following moves");
@@ -319,7 +319,7 @@ fn print_help() {
     println!("   position fen <FEN> moves <move1> ...  |    Set board to a custom FEN then playing the following moves");
     println!("     go depth <depth>                    |    Returns the best move after search for given amount of depth");
     println!("                debug [ on | off ]       |    Sends additional information when needed. Off by default");
-    println!("                 stop                    |    Stops engine from calculating further");
+    println!("                 stop                    |    Stops libengine from calculating further");
     println!("                 quit                    |    Exit the UCI mode\n");
     println!(
         "------------------------------------ EXTENSIONS ----------------------------------------"

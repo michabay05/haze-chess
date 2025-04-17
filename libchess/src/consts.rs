@@ -5,7 +5,7 @@ use std::fmt;
 #[macro_export]
 macro_rules! SQ {
     ($row: expr, $col: expr) => {
-        /* '8' is used here because chess game always is an 8x8 game */
+        /* '8' is used here because libchess game always is an 8x8 game */
         ($row * 8) + $col
     };
 }

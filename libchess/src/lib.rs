@@ -8,3 +8,4 @@ pub mod move_gen;
 pub mod moves;
 mod prng;
 pub mod zobrist;
+mod wasm_exports;

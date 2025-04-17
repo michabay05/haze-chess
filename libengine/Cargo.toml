@@ -1,0 +1,11 @@
+[package]
+name = "libengine"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+name = "libengine"
+path = "src/lib.rs"
+
+[dependencies]
+chess = { path = "../libchess" }

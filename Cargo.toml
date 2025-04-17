@@ -1,16 +1,15 @@
 [package]
 name = "haze"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-[lib]
-name = "chess"
-path = "src/chess/lib.rs"
-crate-type = ["cdylib"]
+[workspace]
+resolver = "2"
+members = ["engine", "libchess", "libengine", "tournament"]
 
 [[bin]]
-name = "engine"
-path = "src/engine/mod.rs"
+name = "haze"
+path = "engine/src/main.rs"
 
 [dependencies]
+libengine = { path = "libengine" }

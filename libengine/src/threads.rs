@@ -4,7 +4,6 @@ use crate::search::{self, SearchData};
 use std::thread::JoinHandle;
 
 pub struct WorkerThread {
-    pub id: usize,
     pub handle: Option<JoinHandle<()>>,
 }
 
@@ -26,7 +25,6 @@ pub fn create_search_workers(data: &SearchData, depth: u32, thread_count: usize)
             search::worker_search_pos(data, depth, i);
         });
         let worker = WorkerThread {
-            id: i,
             handle: Some(th)
         };
         workers.push(worker);

@@ -1,17 +1,7 @@
-mod engine;
-mod eval;
-mod perft;
-mod search;
-mod threads;
-mod tt;
-mod uci;
-
 use std::io::{self, Write};
 
-use engine::Engine;
-
-const VERSION: &str = "0.3";
-const NUM_OF_THREADS: usize = 1;
+use libengine::engine::Engine;
+use libengine::uci;
 
 fn main() {
     let mut engine = Engine::new();
@@ -21,8 +11,7 @@ fn main() {
     while !quit {
         let _ = io::stdout().flush();
         if io::stdin().read_line(&mut buf).is_ok() {
-            let buf = buf.trim();
-            uci::parse(&mut engine, buf, &mut quit);
+            uci::parse(&mut engine, buf.trim(), &mut quit);
         } else {
             eprintln!("[ERROR] Couldn't read input. Please try again!");
         }
